@@ -233,6 +233,25 @@ void bridge.onDocPatched((patch) => {
 // Toasts surfaced by Rust handlers.
 void bridge.onToast(({ text }) => showToast(text));
 
+// External change while edit-mode-dirty: never clobber, offer a reload.
+void bridge.onExternalChange(() => {
+  showToast("File changed on disk — you have unsaved edits", {
+    label: "Reload",
+    onClick: () => void bridge.reloadFromDisk(),
+  });
+});
+
+// External reload landed: mirror the new document into the editor without
+// changing the current mode. (Change bars ride the next preview render.)
+void bridge.onDocReplaced((doc) => {
+  currentPath = doc.path;
+  currentMtime = doc.mtime;
+  dirty = doc.dirty;
+  lastRev = doc.rev;
+  editor.setText(doc.text);
+  refreshChrome();
+});
+
 // Dirty-guarded window close.
 const appWindow = getCurrentWindow();
 let closing = false;

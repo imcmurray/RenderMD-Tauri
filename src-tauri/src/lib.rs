@@ -3,6 +3,7 @@
 mod commands;
 mod preview_protocol;
 mod state;
+mod watcher;
 
 use std::sync::Mutex;
 
@@ -38,8 +39,12 @@ pub fn run() {
                     let abs = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
                     let state = app.state::<Mutex<AppState>>();
                     let mut s = state.lock().unwrap();
-                    if let Err(e) = commands::file::load_into_state(&mut s, abs) {
-                        eprintln!("rendermd: {e}");
+                    match commands::file::load_into_state(&mut s, abs.clone()) {
+                        Ok(()) => {
+                            drop(s);
+                            watcher::start_watching(app.handle(), &abs);
+                        }
+                        Err(e) => eprintln!("rendermd: {e}"),
                     }
                 }
             }
@@ -58,6 +63,7 @@ pub fn run() {
             commands::table::convert_table_paste,
             commands::image::image_change,
             commands::image::paste_image,
+            watcher::reload_from_disk,
         ])
         .run(tauri::generate_context!())
         .expect("error while running RenderMD");

@@ -52,6 +52,16 @@ export const imageChange = (src: string, width: string | null, alt: string, remo
 export const pasteImage = (bytes: Uint8Array) =>
   invoke<string>("paste_image", bytes as unknown as ArrayBuffer);
 
+/** External file change while the editor holds unsaved edits. */
+export const onExternalChange = (handler: () => void): Promise<UnlistenFn> =>
+  listen("external-change", () => handler());
+
+/** Document replaced wholesale (external reload). */
+export const onDocReplaced = (handler: (d: DocInfo) => void): Promise<UnlistenFn> =>
+  listen<DocInfo>("doc-replaced", (e) => handler(e.payload));
+
+export const reloadFromDisk = () => invoke<void>("reload_from_disk");
+
 export interface ToastMsg {
   text: string;
 }

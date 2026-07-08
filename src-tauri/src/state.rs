@@ -45,6 +45,12 @@ pub struct AppState {
     /// Cell to focus after the next preview refresh (Tab/Enter navigation,
     /// structural ops). Consumed by the preview-updated event.
     pub pending_focus_cell: Option<(u64, i32, usize)>,
+    /// External-reload diff state: yellow change bars + hover word-diffs on
+    /// the next render (consumed by it, like the GTK app).
+    pub pending_changes: Option<rendermd_core::diff::PendingChanges>,
+    /// Live directory watcher for the open document. Dropping it stops the
+    /// watch and winds down the debounce thread.
+    pub watcher: Option<notify::RecommendedWatcher>,
 }
 
 impl Default for AppState {
@@ -61,6 +67,8 @@ impl Default for AppState {
             last_self_write: Instant::now(),
             sort_snapshots: HashMap::new(),
             pending_focus_cell: None,
+            pending_changes: None,
+            watcher: None,
         }
     }
 }
@@ -80,10 +88,22 @@ impl AppState {
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
         let base_dir = self.file_path.as_ref().and_then(|p| p.parent());
-        let html =
-            rendermd_core::render::render_markdown_to_html(&self.text, base_dir, self.dark, &title);
 
-        let mut parsed_tables = tables::parse_tables(&self.text);
+        // External-reload change bars: injected into the text pre-render and
+        // consumed (one-shot), matching the GTK refresh. Tables are parsed
+        // from the SAME (possibly marker-injected) text so their ids line up
+        // with the HTML the injector decorates.
+        let text = match self.pending_changes.take() {
+            Some(changes) => {
+                rendermd_core::diff::inject_change_markers(&self.text, &changes, self.dark)
+            }
+            None => self.text.clone(),
+        };
+
+        let html =
+            rendermd_core::render::render_markdown_to_html(&text, base_dir, self.dark, &title);
+
+        let mut parsed_tables = tables::parse_tables(&text);
         for t in &mut parsed_tables {
             if let Some(snap) = self.sort_snapshots.get(&t.id) {
                 t.sort_indicator = Some((snap.col, snap.direction));

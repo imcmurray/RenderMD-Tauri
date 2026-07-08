@@ -45,10 +45,14 @@ pub fn open_file<R: Runtime>(
     state: State<'_, Mutex<AppState>>,
     path: String,
 ) -> Result<DocInfo, String> {
+    let path = PathBuf::from(path);
     let mut s = state.lock().unwrap();
-    load_into_state(&mut s, PathBuf::from(path))?;
+    load_into_state(&mut s, path.clone())?;
     emit_preview_updated(&app, s.preview_rev);
-    Ok(DocInfo::from_state(&s))
+    let info = DocInfo::from_state(&s);
+    drop(s); // start_watching locks the state itself
+    crate::watcher::start_watching(&app, &path);
+    Ok(info)
 }
 
 #[tauri::command]
@@ -61,6 +65,7 @@ pub fn new_file<R: Runtime>(
         dark: s.dark,
         ..AppState::default()
     };
+    // Dropping the old state above also dropped its watcher.
     s.render_preview();
     emit_preview_updated(&app, s.preview_rev);
     Ok(DocInfo::from_state(&s))
@@ -92,10 +97,13 @@ pub fn save_file_as<R: Runtime>(
         path.set_extension("md");
     }
     atomic_write(&mut s, &path, &text)?;
-    s.file_path = Some(path);
+    s.file_path = Some(path.clone());
     s.text = text;
     s.is_modified = false;
     s.render_preview(); // title + base dir changed
     emit_preview_updated(&app, s.preview_rev);
-    Ok(DocInfo::from_state(&s))
+    let info = DocInfo::from_state(&s);
+    drop(s);
+    crate::watcher::start_watching(&app, &path);
+    Ok(info)
 }
