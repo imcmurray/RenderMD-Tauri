@@ -104,7 +104,10 @@ pub fn export_html(state: State<'_, Mutex<AppState>>, dest: String) -> Result<()
         .and_then(|p| p.file_name())
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
-    let base_dir = s.file_path.as_ref().and_then(|p| p.parent().map(|p| p.to_path_buf()));
+    let base_dir = s
+        .file_path
+        .as_ref()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()));
 
     // Fresh plain render: no table-edit JS, no history rail.
     let mut html = rendermd_core::render::render_markdown_to_html(
@@ -132,9 +135,7 @@ pub fn export_html(state: State<'_, Mutex<AppState>>, dest: String) -> Result<()
 
     // Mermaid: extract the bundle once to the cache dir and reference it.
     if html.contains(MERMAID_ASSET_PATH) {
-        let cache = dirs::cache_dir()
-            .ok_or("no cache dir")?
-            .join("rendermd");
+        let cache = dirs::cache_dir().ok_or("no cache dir")?.join("rendermd");
         std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
         let bundle = cache.join("mermaid.min.js");
         if !bundle.exists() {
