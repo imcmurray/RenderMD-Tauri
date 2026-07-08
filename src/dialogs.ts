@@ -54,3 +54,61 @@ export function askUnsavedChanges(fileLabel: string): Promise<DirtyChoice> {
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
+
+export type ImageOptionsResult =
+  | { action: "apply"; width: string | null; alt: string }
+  | { action: "remove" }
+  | { action: "cancel" };
+
+/** Image options: edit alt text / width, or remove the image. The web
+ * equivalent of the GTK AlertDialog with the two-entry form. */
+export function imageOptionsDialog(
+  src: string,
+  currentWidth: string,
+  currentAlt: string,
+): Promise<ImageOptionsResult> {
+  return new Promise((resolve) => {
+    const dlg = document.createElement("dialog");
+    dlg.className = "rmd-dialog";
+    dlg.innerHTML = `
+      <h3>Image options</h3>
+      <p class="rmd-dialog-src">${escapeHtml(src)}</p>
+      <label>Alt text
+        <input type="text" name="alt" value="${escapeHtml(currentAlt)}">
+      </label>
+      <label>Width (px, blank for auto)
+        <input type="text" name="width" maxlength="8" value="${escapeHtml(currentWidth)}">
+      </label>
+      <div class="rmd-dialog-buttons">
+        <button data-choice="cancel">Cancel</button>
+        <button data-choice="remove" class="destructive">Remove</button>
+        <button data-choice="apply" class="suggested" autofocus>Apply</button>
+      </div>`;
+
+    const done = (result: ImageOptionsResult) => {
+      dlg.close();
+      dlg.remove();
+      resolve(result);
+    };
+    dlg.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest("button[data-choice]");
+      if (!btn) return;
+      const choice = btn.getAttribute("data-choice");
+      if (choice === "apply") {
+        const alt = (dlg.querySelector('input[name="alt"]') as HTMLInputElement).value;
+        const width = (dlg.querySelector('input[name="width"]') as HTMLInputElement).value.trim();
+        done({ action: "apply", width: width === "" ? null : width, alt });
+      } else if (choice === "remove") {
+        done({ action: "remove" });
+      } else {
+        done({ action: "cancel" });
+      }
+    });
+    dlg.addEventListener("cancel", () => {
+      dlg.remove();
+      resolve({ action: "cancel" });
+    });
+    document.body.appendChild(dlg);
+    dlg.showModal();
+  });
+}

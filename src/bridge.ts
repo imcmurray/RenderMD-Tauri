@@ -34,16 +34,23 @@ export const onPreviewUpdated = (
   handler: (p: PreviewUpdated) => void,
 ): Promise<UnlistenFn> => listen<PreviewUpdated>("preview-updated", (e) => handler(e.payload));
 
-/** Minimal editor patch mirrored from a Rust-side table/image op.
- * Offsets are UTF-16 code units (CodeMirror positions). */
+/** Minimal editor patch mirrored from a Rust-side table/image op. One or
+ * more changes applied as a single undoable transaction; offsets are UTF-16
+ * code units (CodeMirror positions) in the PRE-transaction document. */
 export interface DocPatch {
-  from: number;
-  to: number;
-  insert: string;
+  changes: { from: number; to: number; insert: string }[];
 }
 
 export const onDocPatched = (handler: (p: DocPatch) => void): Promise<UnlistenFn> =>
   listen<DocPatch>("doc-patched", (e) => handler(e.payload));
+
+/** Image-options dialog commit. */
+export const imageChange = (src: string, width: string | null, alt: string, remove: boolean) =>
+  invoke<void>("image_change", { src, width, alt, remove });
+
+/** Send raw PNG bytes; returns the markdown ref to insert. */
+export const pasteImage = (bytes: Uint8Array) =>
+  invoke<string>("paste_image", bytes as unknown as ArrayBuffer);
 
 export interface ToastMsg {
   text: string;

@@ -19,4 +19,5 @@ tauri-plugin-dialog = "2"
 serde.workspace = true
 serde_json.workspace = true
 percent-encoding.workspace = true
+chrono.workspace = true
 tempfile = "3"

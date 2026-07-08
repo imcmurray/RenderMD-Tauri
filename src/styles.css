@@ -225,3 +225,28 @@ body {
 .rmd-toast-out {
   opacity: 0;
 }
+
+/* Image options dialog form. */
+.rmd-dialog-src {
+  font-size: 12px;
+  opacity: 0.7;
+  word-break: break-all;
+}
+
+.rmd-dialog label {
+  display: block;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.rmd-dialog input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--hb-border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+}

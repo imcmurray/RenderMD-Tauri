@@ -17,7 +17,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
 
-import { updateText, convertTablePaste, type DocPatch } from "./bridge";
+import { updateText, convertTablePaste, pasteImage, type DocPatch } from "./bridge";
 import { showToast } from "./toasts";
 
 /** Transactions carrying this annotation came FROM Rust — don't echo back. */
@@ -63,12 +63,37 @@ export class Editor {
     });
   }
 
-  /** Smart paste: table-shaped clipboard content (TSV/CSV/HTML/GFM) is
-   * converted to a pretty GFM table with block padding; everything else
-   * falls back to a plain text insert. Mirrors the GTK try_paste_table. */
+  /** Smart paste, in priority order: (1) a clipboard image is saved beside
+   * the document and inserted as a markdown ref; (2) table-shaped content
+   * (TSV/CSV/HTML/GFM) becomes a pretty GFM table with block padding;
+   * (3) plain text insert. Mirrors the GTK paste interception. */
   private handlePaste(event: ClipboardEvent, view: EditorView): boolean {
     const cd = event.clipboardData;
     if (!cd) return false;
+
+    const imageItem = Array.from(cd.items).find((i) => i.type.startsWith("image/"));
+    if (imageItem) {
+      const file = imageItem.getAsFile();
+      if (file) {
+        event.preventDefault();
+        void (async () => {
+          try {
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            const mdRef = await pasteImage(bytes);
+            view.dispatch(view.state.replaceSelection(mdRef), {
+              userEvent: "input.paste",
+              scrollIntoView: true,
+            });
+            const rel = /\((.*)\)/.exec(mdRef)?.[1] ?? "";
+            showToast(`Image saved: ${decodeURIComponent(rel)}`);
+          } catch (e) {
+            showToast(String(e));
+          }
+        })();
+        return true;
+      }
+    }
+
     const text = cd.getData("text/plain") || null;
     const html = cd.getData("text/html") || null;
     if (!text && !html) return false;
@@ -124,9 +149,9 @@ export class Editor {
    * transaction, annotated so the update listener doesn't echo it back. */
   applyPatch(patch: DocPatch) {
     this.view.dispatch({
-      changes: { from: patch.from, to: patch.to, insert: patch.insert },
+      changes: patch.changes,
       annotations: remotePatch.of(true),
-      userEvent: "input.table",
+      userEvent: "input.remote",
     });
   }
 

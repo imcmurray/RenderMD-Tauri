@@ -49,7 +49,7 @@ fn apply_text_patch<R: Runtime>(
     let insert = &new_text[delta.new_range.clone()];
     let _ = app.emit(
         "doc-patched",
-        serde_json::json!({ "from": from, "to": to, "insert": insert }),
+        serde_json::json!({ "changes": [{ "from": from, "to": to, "insert": insert }] }),
     );
     s.text = new_text;
     s.is_modified = true;

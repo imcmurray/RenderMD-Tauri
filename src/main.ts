@@ -7,7 +7,12 @@ import * as bridge from "./bridge";
 import type { DocInfo, Mode } from "./bridge";
 import { Editor } from "./editor";
 import { Preview } from "./preview";
-import { pickFileToOpen, pickSavePath, askUnsavedChanges } from "./dialogs";
+import {
+  pickFileToOpen,
+  pickSavePath,
+  askUnsavedChanges,
+  imageOptionsDialog,
+} from "./dialogs";
 import { showToast } from "./toasts";
 
 const els = {
@@ -90,6 +95,20 @@ preview.on("topLine", (payload) => {
   const n = parseInt(payload, 10);
   if (n === -1) editor.scrollToEnd();
   else if (n >= 1) editor.scrollToLine(n);
+});
+
+// Image click in the preview → options dialog → Rust patch.
+preview.on("imageClick", (payload) => {
+  const [src = "", width = "", alt = ""] = payload.split("\t");
+  if (!src) return;
+  void (async () => {
+    const result = await imageOptionsDialog(src, width, alt);
+    if (result.action === "apply") {
+      await bridge.imageChange(src, result.width, result.alt, false);
+    } else if (result.action === "remove") {
+      await bridge.imageChange(src, null, "", true);
+    }
+  })();
 });
 
 // ---------------------------------------------------------------- actions
