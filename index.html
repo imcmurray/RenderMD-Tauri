@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RenderMD</title>
+    <script type="module" src="/src/main.ts"></script>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header id="headerbar">
+        <div class="hb-left">
+          <button id="btn-open" title="Open (Ctrl+O)">Open</button>
+          <button id="btn-save" title="Save (Ctrl+S)">Save</button>
+        </div>
+        <div class="hb-title" id="title">RenderMD</div>
+        <div class="hb-right">
+          <button id="btn-toggle" title="Toggle edit/preview (F5)">Edit</button>
+        </div>
+      </header>
+      <main id="content">
+        <div id="editor-pane" hidden></div>
+        <iframe id="preview-pane" title="Preview"></iframe>
+      </main>
+      <footer id="statusbar">
+        <span id="status-path">No file</span>
+        <span id="status-mtime"></span>
+        <span id="status-mode">Preview</span>
+      </footer>
+    </div>
+  </body>
+</html>

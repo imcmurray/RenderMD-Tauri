@@ -1,0 +1,14 @@
+[package]
+name = "rendermd-core"
+description = "RenderMD's pure-Rust markdown pipeline: rendering, preprocessing, tables, diffs, git history"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+comrak.workspace = true
+pulldown-cmark.workspace = true
+csv.workspace = true
+percent-encoding.workspace = true
+chrono.workspace = true
+serde.workspace = true
