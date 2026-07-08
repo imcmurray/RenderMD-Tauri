@@ -1,0 +1,60 @@
+//! RenderMD Tauri shell.
+
+mod commands;
+mod preview_protocol;
+mod state;
+
+use std::sync::Mutex;
+
+use tauri::Manager;
+
+use state::AppState;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    // WebKitGTK's DMA-BUF renderer crashes the Wayland connection on some
+    // driver/compositor combinations (GDK "Error 71 (Protocol error)
+    // dispatching to Wayland display", verified on Arch + Budgie/Wayland).
+    // Disable it unless the user has expressed an opinion. Same only-if-unset
+    // pattern the GTK app used for GSK_RENDERER.
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        // SAFETY: called before the app starts any other threads.
+        unsafe { std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1") };
+    }
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .manage(Mutex::new(AppState::default()))
+        .register_uri_scheme_protocol("preview", |ctx, request| {
+            preview_protocol::handle(ctx, request)
+        })
+        .setup(|app| {
+            // `rendermd file.md` — load a CLI argument before the window
+            // renders so get_doc() returns it at boot.
+            if let Some(arg) = std::env::args().nth(1) {
+                let path = std::path::Path::new(&arg);
+                if path.is_file() {
+                    let abs = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+                    let state = app.state::<Mutex<AppState>>();
+                    let mut s = state.lock().unwrap();
+                    if let Err(e) = commands::file::load_into_state(&mut s, abs) {
+                        eprintln!("rendermd: {e}");
+                    }
+                }
+            }
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::file::open_file,
+            commands::file::new_file,
+            commands::file::save_file,
+            commands::file::save_file_as,
+            commands::doc::update_text,
+            commands::doc::set_mode,
+            commands::doc::get_doc,
+            commands::doc::set_dark,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running RenderMD");
+}

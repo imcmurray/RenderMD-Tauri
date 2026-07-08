@@ -1,0 +1,172 @@
+/* RenderMD shell chrome. Preview document styling lives in rendermd-core's
+   template constants, not here — this file styles only the app shell. */
+
+:root {
+  --hb-bg: #fafafa;
+  --hb-fg: #1a1a1a;
+  --hb-border: #d8d8d8;
+  --accent: #3584e4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --hb-bg: #242424;
+    --hb-fg: #eeeeec;
+    --hb-border: #3a3a3a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, sans-serif;
+  background: var(--hb-bg);
+  color: var(--hb-fg);
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+#headerbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--hb-border);
+  user-select: none;
+}
+
+.hb-left,
+.hb-right {
+  display: flex;
+  gap: 6px;
+}
+
+.hb-title {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#headerbar button {
+  font: inherit;
+  padding: 4px 12px;
+  border: 1px solid var(--hb-border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+#headerbar button:hover {
+  border-color: var(--accent);
+}
+
+#content {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+#editor-pane,
+#preview-pane {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#preview-pane {
+  border: 0;
+  background: white;
+}
+
+@media (prefers-color-scheme: dark) {
+  #preview-pane {
+    background: #1e1e1e;
+  }
+}
+
+#statusbar {
+  display: flex;
+  gap: 16px;
+  padding: 3px 10px;
+  border-top: 1px solid var(--hb-border);
+  font-size: 12px;
+  opacity: 0.8;
+  user-select: none;
+}
+
+#status-path {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Editor pane fills its container; CM6 handles its own scrolling. */
+#editor-pane .cm-editor {
+  height: 100%;
+  font-size: 14px;
+}
+
+#editor-pane .cm-scroller {
+  font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+}
+
+/* Three-button dirty prompt. */
+.rmd-dialog {
+  border: 1px solid var(--hb-border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  background: var(--hb-bg);
+  color: var(--hb-fg);
+  max-width: 420px;
+}
+
+.rmd-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.rmd-dialog h3 {
+  margin-top: 0;
+}
+
+.rmd-dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.rmd-dialog-buttons button {
+  font: inherit;
+  padding: 6px 16px;
+  border: 1px solid var(--hb-border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.rmd-dialog-buttons button.suggested {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.rmd-dialog-buttons button.destructive {
+  color: #c01c28;
+  border-color: #c01c28;
+}
