@@ -593,9 +593,80 @@ pub const HTML_TEMPLATE: &str = r#"<!doctype html>
 {BODY}
 {MERMAID_SCRIPT}
 {IMAGE_CLICK_JS}
+{PREVIEW_BRIDGE_JS}
 </body>
 </html>
 "#;
+
+// Persistent shell↔preview bridge. Replaces the GTK app's per-refresh
+// injected one-shot <script>s (scroll targeting) and its
+// `evaluate_javascript` queries (topmost-visible line): the shell now sends
+// {rmd:1, cmd, ...} messages INTO the frame, and the frame answers on the
+// __rmdPost channel. The scroll-targeting and top-line algorithms are ports
+// of the GTK versions (settle timers included — mermaid SVGs and late image
+// loads must not push the target offscreen).
+//
+// Line conventions (identical to the GTK app):
+//   - `scrollToSourceLine` line 0  = "scroll to end" sentinel
+//   - `topLine` reply: -1 = at end, 0 = unknown, else 1-based source line
+pub const PREVIEW_BRIDGE_JS: &str = r#"<script>(function(){
+  if (!window.__rmdPost) return;
+  function topVisibleLine() {
+    var doc = document.documentElement;
+    if (window.scrollY + window.innerHeight >= doc.scrollHeight - 2) return -1;
+    var els = document.querySelectorAll('[data-sourcepos]');
+    for (var i = 0; i < els.length; i++) {
+      var r = els[i].getBoundingClientRect();
+      if (r.height === 0) continue;
+      if (r.bottom > 0) {
+        var m = (els[i].getAttribute('data-sourcepos') || '').match(/^(\d+):/);
+        return m ? parseInt(m[1], 10) : 0;
+      }
+    }
+    return 0;
+  }
+  function target(line) {
+    var els = document.querySelectorAll('[data-sourcepos]');
+    var best = null;
+    var bestDelta = Infinity;
+    for (var i = 0; i < els.length; i++) {
+      var sp = els[i].getAttribute('data-sourcepos') || '';
+      var m = sp.match(/^(\d+):\d+-(\d+):/);
+      if (!m) continue;
+      var start = parseInt(m[1], 10);
+      var end = parseInt(m[2], 10);
+      if (line >= start && line <= end) return els[i];
+      var delta = line < start ? start - line : line - end;
+      if (delta < bestDelta) { bestDelta = delta; best = els[i]; }
+    }
+    return best;
+  }
+  function scrollToSourceLine(line) {
+    function go() {
+      if (line === 0) { window.scrollTo(0, document.documentElement.scrollHeight); return; }
+      var t = target(line);
+      if (!t) return;
+      var rect = t.getBoundingClientRect();
+      window.scrollTo(0, Math.max(0, rect.top + window.scrollY));
+    }
+    go(); setTimeout(go, 150); setTimeout(go, 600);
+  }
+  window.addEventListener('message', function(e) {
+    var d = e.data || {};
+    if (d.rmd !== 1 || !d.cmd) return;
+    if (d.cmd === 'scrollToSourceLine') scrollToSourceLine(d.line | 0);
+    else if (d.cmd === 'reportTopLine') window.__rmdPost('topLine', String(topVisibleLine()));
+    else if (d.cmd === 'focusCell' && window.__rmdFocusCell) window.__rmdFocusCell(d.tid, d.r, d.c);
+  });
+  var scrollTimer = null;
+  window.addEventListener('scroll', function() {
+    if (scrollTimer) return;
+    scrollTimer = setTimeout(function() {
+      scrollTimer = null;
+      window.__rmdPost('previewScrolled', String(topVisibleLine()));
+    }, 200);
+  }, { passive: true });
+})();</script>"#;
 
 // Image interactions in the rendered preview:
 //   - Hover an image: 4 corner handles fade in.

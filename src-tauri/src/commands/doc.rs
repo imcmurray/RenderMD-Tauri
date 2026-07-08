@@ -21,7 +21,10 @@ pub fn update_text<R: Runtime>(
         s.is_modified = true;
     }
     s.render_preview();
-    let _ = app.emit("preview-updated", serde_json::json!({ "rev": s.preview_rev }));
+    let _ = app.emit(
+        "preview-updated",
+        serde_json::json!({ "rev": s.preview_rev }),
+    );
     s.preview_rev
 }
 
@@ -48,6 +51,9 @@ pub fn set_dark<R: Runtime>(app: AppHandle<R>, state: State<'_, Mutex<AppState>>
     if s.dark != dark {
         s.dark = dark;
         s.render_preview();
-        let _ = app.emit("preview-updated", serde_json::json!({ "rev": s.preview_rev }));
+        let _ = app.emit(
+            "preview-updated",
+            serde_json::json!({ "rev": s.preview_rev }),
+        );
     }
 }

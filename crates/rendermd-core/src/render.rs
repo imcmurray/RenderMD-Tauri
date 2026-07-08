@@ -189,6 +189,7 @@ pub fn render_markdown_to_html(
         .replace("{BODY}", &body)
         .replace("{MERMAID_SCRIPT}", &mermaid_script)
         .replace("{IMAGE_CLICK_JS}", image_js)
+        .replace("{PREVIEW_BRIDGE_JS}", crate::template::PREVIEW_BRIDGE_JS)
 }
 
 #[cfg(test)]

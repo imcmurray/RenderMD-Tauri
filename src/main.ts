@@ -31,10 +31,13 @@ let dirty = false;
 
 // ---------------------------------------------------------------- UI state
 
+let lastRev = 0;
+
 function applyDoc(doc: DocInfo) {
   currentPath = doc.path;
   currentMtime = doc.mtime;
   dirty = doc.dirty;
+  lastRev = doc.rev;
   editor.setText(doc.text);
   setUiMode(doc.mode);
   if (doc.rev > 0) preview.show(doc.rev);
@@ -66,13 +69,27 @@ function setUiMode(next: Mode) {
 
 async function toggleMode() {
   if (mode === "edit") {
-    // Entering preview: make sure Rust has the latest text first.
+    // Entering preview: capture the top visible line BEFORE the sync
+    // re-renders, then land the preview on it (0 = end sentinel).
+    const line = editor.topVisibleLine();
     await editor.flushSync();
     setUiMode("preview");
+    preview.show(lastRev);
+    preview.send({ cmd: "scrollToSourceLine", line });
   } else {
+    // Entering edit: ask the frame for its topmost visible source line;
+    // the async "topLine" reply scrolls the editor (handler below).
+    preview.send({ cmd: "reportTopLine" });
     setUiMode("edit");
   }
 }
+
+// topLine reply: -1 = frame was at the end, 0 = unknown, else 1-based line.
+preview.on("topLine", (payload) => {
+  const n = parseInt(payload, 10);
+  if (n === -1) editor.scrollToEnd();
+  else if (n >= 1) editor.scrollToLine(n);
+});
 
 // ---------------------------------------------------------------- actions
 
@@ -166,9 +183,19 @@ editor.onSynced = () => {
   }
 };
 
-// Live preview refresh.
+// Live preview refresh. When the visible preview re-renders (table edits,
+// theme flips, external reloads), restore the last reported scroll position
+// — the iframe src swap would otherwise reset it to the top.
 void bridge.onPreviewUpdated(({ rev }) => {
-  if (mode === "preview") preview.show(rev);
+  lastRev = rev;
+  if (mode === "preview") {
+    const line = preview.lastScrolledLine;
+    preview.show(rev);
+    if (line !== 0) {
+      // previewScrolled uses -1 for "at end"; scrollToSourceLine uses 0.
+      preview.send({ cmd: "scrollToSourceLine", line: line === -1 ? 0 : line });
+    }
+  }
 });
 
 // Dirty-guarded window close.

@@ -54,17 +54,8 @@ impl AppState {
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
         let base_dir = self.file_path.as_ref().and_then(|p| p.parent());
-        self.preview_html = rendermd_core::render::render_markdown_to_html(
-            &self.text, base_dir, self.dark, &title,
-        );
+        self.preview_html =
+            rendermd_core::render::render_markdown_to_html(&self.text, base_dir, self.dark, &title);
         self.preview_rev += 1;
-    }
-
-    /// Directory used to resolve relative resources in the preview.
-    pub fn base_dir(&self) -> Option<PathBuf> {
-        self.file_path
-            .as_ref()
-            .and_then(|p| p.parent())
-            .map(|p| p.to_path_buf())
     }
 }

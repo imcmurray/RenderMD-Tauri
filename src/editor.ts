@@ -81,6 +81,37 @@ export class Editor {
     redo(this.view);
   }
 
+  /** 1-based top visible line; 0 = "scrolled to end" sentinel (same
+   * convention as the GTK app's top_visible_source_line_1based). */
+  topVisibleLine(): number {
+    const scroller = this.view.scrollDOM;
+    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) {
+      return 0;
+    }
+    const block = this.view.lineBlockAtHeight(scroller.scrollTop);
+    return this.view.state.doc.lineAt(block.from).number;
+  }
+
+  /** Put the given 1-based line at the top of the viewport and move the
+   * cursor there (yalign=start, so preview↔edit round-trips don't drift). */
+  scrollToLine(line1: number) {
+    const line = Math.min(Math.max(line1, 1), this.view.state.doc.lines);
+    const pos = this.view.state.doc.line(line).from;
+    this.view.dispatch({
+      selection: { anchor: pos },
+      effects: EditorView.scrollIntoView(pos, { y: "start" }),
+    });
+  }
+
+  /** Pin the editor to the document tail. */
+  scrollToEnd() {
+    const pos = this.view.state.doc.length;
+    this.view.dispatch({
+      selection: { anchor: pos },
+      effects: EditorView.scrollIntoView(pos, { y: "end" }),
+    });
+  }
+
   /** Flush any pending debounce immediately (before save/mode toggle). */
   async flushSync(): Promise<void> {
     if (this.syncTimer !== null) {
