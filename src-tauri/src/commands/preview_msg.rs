@@ -6,8 +6,8 @@
 //! locally to this command.
 //!
 //! Channel → handler mapping fills in per phase:
-//! - Phase 4: tableEdit / tableNavigate / tableStructure / tableSort /
-//!   tableResizeColumns
+//! - Phase 4 (here): tableEdit / tableNavigate / tableStructure /
+//!   tableSort / tableResizeColumns
 //! - Phase 5: imageResize / imageMove
 //! - Phase 7: commitClick / toggleHistory / toggleHistoryCollapse
 
@@ -15,21 +15,31 @@ use std::sync::Mutex;
 
 use tauri::{AppHandle, Runtime, State};
 
+use super::table;
 use crate::state::AppState;
 
 #[tauri::command]
 pub fn preview_message<R: Runtime>(
-    _app: AppHandle<R>,
-    _state: State<'_, Mutex<AppState>>,
+    app: AppHandle<R>,
+    state: State<'_, Mutex<AppState>>,
     channel: String,
     payload: String,
 ) -> Result<(), String> {
-    // Per-phase channel arms land here (see module docs). Unknown channels
-    // are logged, not errors — a newer preview doc must never hard-fail an
-    // older shell.
-    eprintln!(
-        "preview_message: unhandled channel {channel} ({} bytes)",
-        payload.len()
-    );
+    let mut s = state.lock().unwrap();
+    match channel.as_str() {
+        "tableEdit" => table::handle_table_edit(&app, &mut s, &payload),
+        "tableNavigate" => table::handle_table_navigate(&app, &mut s, &payload),
+        "tableStructure" => table::handle_table_structure(&app, &mut s, &payload),
+        "tableSort" => table::handle_table_sort(&app, &mut s, &payload),
+        "tableResizeColumns" => table::handle_table_resize_columns(&app, &mut s, &payload),
+        other => {
+            // Unknown channels are logged, not errors — a newer preview doc
+            // must never hard-fail an older shell.
+            eprintln!(
+                "preview_message: unhandled channel {other} ({} bytes)",
+                payload.len()
+            );
+        }
+    }
     Ok(())
 }

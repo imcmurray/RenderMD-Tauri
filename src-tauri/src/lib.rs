@@ -55,6 +55,7 @@ pub fn run() {
             commands::doc::get_doc,
             commands::doc::set_dark,
             commands::preview_msg::preview_message,
+            commands::table::convert_table_paste,
         ])
         .run(tauri::generate_context!())
         .expect("error while running RenderMD");

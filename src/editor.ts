@@ -17,7 +17,8 @@ import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
 
-import { updateText } from "./bridge";
+import { updateText, convertTablePaste, type DocPatch } from "./bridge";
+import { showToast } from "./toasts";
 
 /** Transactions carrying this annotation came FROM Rust — don't echo back. */
 export const remotePatch = Annotation.define<boolean>();
@@ -55,7 +56,77 @@ export class Editor {
           if (u.transactions.some((t) => t.annotation(remotePatch))) return;
           this.scheduleSync();
         }),
+        EditorView.domEventHandlers({
+          paste: (event, view) => this.handlePaste(event, view),
+        }),
       ],
+    });
+  }
+
+  /** Smart paste: table-shaped clipboard content (TSV/CSV/HTML/GFM) is
+   * converted to a pretty GFM table with block padding; everything else
+   * falls back to a plain text insert. Mirrors the GTK try_paste_table. */
+  private handlePaste(event: ClipboardEvent, view: EditorView): boolean {
+    const cd = event.clipboardData;
+    if (!cd) return false;
+    const text = cd.getData("text/plain") || null;
+    const html = cd.getData("text/html") || null;
+    if (!text && !html) return false;
+
+    event.preventDefault();
+    void (async () => {
+      const result = await convertTablePaste(text, html).catch(() => null);
+      if (result) {
+        this.insertTableAtCursor(view, result.markdown);
+        showToast(
+          `Pasted as table (${result.body_rows}×${result.cols} from ${result.origin}) — Ctrl+Z to undo`,
+        );
+      } else if (text) {
+        view.dispatch(view.state.replaceSelection(text), {
+          userEvent: "input.paste",
+          scrollIntoView: true,
+        });
+      }
+    })();
+    return true;
+  }
+
+  /** Insert a GFM table at the cursor with blank-line padding so it parses
+   * as a block (port of the GTK insert_table_at_cursor). One undo step. */
+  private insertTableAtCursor(view: EditorView, md: string) {
+    const state = view.state;
+    const sel = state.selection.main;
+    const line = state.doc.lineAt(sel.from);
+    const atLineStart = sel.from === line.from;
+    const atDocStart = sel.from === 0;
+    const prevLineBlank =
+      atLineStart && !atDocStart
+        ? state.doc.line(line.number - 1).text.trim() === ""
+        : atDocStart;
+
+    let prefix = "";
+    if (!atLineStart) {
+      prefix = "\n\n"; // break out of the current line + blank separator
+    } else if (!prevLineBlank) {
+      prefix = "\n"; // blank separator above
+    }
+    const insertion = `${prefix}${md.replace(/\n+$/, "")}\n\n`;
+
+    view.dispatch({
+      changes: { from: sel.from, to: sel.to, insert: insertion },
+      selection: { anchor: sel.from + insertion.length },
+      userEvent: "input.paste",
+      scrollIntoView: true,
+    });
+  }
+
+  /** Apply a Rust-side minimal patch (UTF-16 offsets) as one undoable
+   * transaction, annotated so the update listener doesn't echo it back. */
+  applyPatch(patch: DocPatch) {
+    this.view.dispatch({
+      changes: { from: patch.from, to: patch.to, insert: patch.insert },
+      annotations: remotePatch.of(true),
+      userEvent: "input.table",
     });
   }
 

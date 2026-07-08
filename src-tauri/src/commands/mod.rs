@@ -1,6 +1,7 @@
 pub mod doc;
 pub mod file;
 pub mod preview_msg;
+pub mod table;
 
 use serde::Serialize;
 

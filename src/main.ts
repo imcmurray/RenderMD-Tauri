@@ -8,6 +8,7 @@ import type { DocInfo, Mode } from "./bridge";
 import { Editor } from "./editor";
 import { Preview } from "./preview";
 import { pickFileToOpen, pickSavePath, askUnsavedChanges } from "./dialogs";
+import { showToast } from "./toasts";
 
 const els = {
   title: document.getElementById("title")!,
@@ -185,18 +186,33 @@ editor.onSynced = () => {
 
 // Live preview refresh. When the visible preview re-renders (table edits,
 // theme flips, external reloads), restore the last reported scroll position
-// — the iframe src swap would otherwise reset it to the top.
-void bridge.onPreviewUpdated(({ rev }) => {
+// — the iframe src swap would otherwise reset it to the top. Table ops may
+// also carry a focus cell to re-enter editing after the reload.
+void bridge.onPreviewUpdated(({ rev, focusCell }) => {
   lastRev = rev;
   if (mode === "preview") {
     const line = preview.lastScrolledLine;
     preview.show(rev);
-    if (line !== 0) {
+    if (focusCell) {
+      preview.send({ cmd: "focusCell", tid: focusCell.tid, r: focusCell.r, c: focusCell.c });
+    } else if (line !== 0) {
       // previewScrolled uses -1 for "at end"; scrollToSourceLine uses 0.
       preview.send({ cmd: "scrollToSourceLine", line: line === -1 ? 0 : line });
     }
   }
 });
+
+// Rust-side buffer patches (table/image ops) mirrored into the editor.
+void bridge.onDocPatched((patch) => {
+  editor.applyPatch(patch);
+  if (!dirty) {
+    dirty = true;
+    refreshChrome();
+  }
+});
+
+// Toasts surfaced by Rust handlers.
+void bridge.onToast(({ text }) => showToast(text));
 
 // Dirty-guarded window close.
 const appWindow = getCurrentWindow();
