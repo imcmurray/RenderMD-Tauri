@@ -125,6 +125,9 @@ pub fn reload_from_disk_inner<R: Runtime>(app: &AppHandle<R>, s: &mut AppState, 
     }
     s.text = new_text;
     s.is_modified = false;
+    // The external change may have been a git operation — refresh the rail.
+    s.history = rendermd_core::history::fetch_git_history(path);
+    s.viewing_snapshot = None;
 
     let _ = app.emit(
         "doc-replaced",

@@ -2,6 +2,7 @@
 
 mod commands;
 mod preview_protocol;
+mod settings;
 mod state;
 mod watcher;
 
@@ -24,9 +25,16 @@ pub fn run() {
         unsafe { std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1") };
     }
 
+    let ui_settings = settings::load();
+    let initial_state = AppState {
+        history_visible: ui_settings.history_visible,
+        history_collapsed: ui_settings.history_collapsed,
+        ..AppState::default()
+    };
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .manage(Mutex::new(AppState::default()))
+        .manage(Mutex::new(initial_state))
         .register_uri_scheme_protocol("preview", |ctx, request| {
             preview_protocol::handle(ctx, request)
         })

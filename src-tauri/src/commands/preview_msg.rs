@@ -15,7 +15,7 @@ use std::sync::Mutex;
 
 use tauri::{AppHandle, Runtime, State};
 
-use super::{image, table};
+use super::{history, image, table};
 use crate::state::AppState;
 
 #[tauri::command]
@@ -34,6 +34,9 @@ pub fn preview_message<R: Runtime>(
         "tableResizeColumns" => table::handle_table_resize_columns(&app, &mut s, &payload),
         "imageResize" => image::handle_image_resize(&app, &mut s, &payload),
         "imageMove" => image::handle_image_move(&app, &mut s, &payload),
+        "commitClick" => history::handle_commit_click(&app, &mut s, &payload),
+        "toggleHistory" => history::handle_toggle_history(&app, &mut s),
+        "toggleHistoryCollapse" => history::handle_toggle_history_collapse(&app, &mut s),
         other => {
             // Unknown channels are logged, not errors — a newer preview doc
             // must never hard-fail an older shell.

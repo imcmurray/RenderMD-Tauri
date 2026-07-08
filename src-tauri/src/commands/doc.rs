@@ -19,6 +19,10 @@ pub fn update_text<R: Runtime>(
     if text != s.text {
         s.text = text;
         s.is_modified = true;
+        // Editing the working copy ends snapshot browsing — the preview
+        // must show what's being typed, not a historical revision.
+        s.viewing_snapshot = None;
+        s.pending_changes = None;
     }
     s.render_preview();
     let _ = app.emit(

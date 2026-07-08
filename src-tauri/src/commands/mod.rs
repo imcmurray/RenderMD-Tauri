@@ -1,5 +1,6 @@
 pub mod doc;
 pub mod file;
+pub mod history;
 pub mod image;
 pub mod preview_msg;
 pub mod table;

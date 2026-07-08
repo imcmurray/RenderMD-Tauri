@@ -51,6 +51,22 @@ pub struct AppState {
     /// Live directory watcher for the open document. Dropping it stops the
     /// watch and winds down the debounce thread.
     pub watcher: Option<notify::RecommendedWatcher>,
+    /// `git log --follow` cache for the open document; None = not a repo
+    /// file (the rail stays out of the preview entirely).
+    pub history: Option<Vec<rendermd_core::history::Commit>>,
+    pub history_visible: bool,
+    pub history_collapsed: bool,
+    /// View-only historical revision being browsed via the rail. The buffer
+    /// of record is untouched; editing the working copy clears this.
+    pub viewing_snapshot: Option<HistorySnapshot>,
+}
+
+/// A commit being viewed via the history rail.
+pub struct HistorySnapshot {
+    pub sha: String,
+    pub text: String,
+    pub parent_text: Option<String>,
+    pub commit_unix_secs: i64,
 }
 
 impl Default for AppState {
@@ -69,6 +85,10 @@ impl Default for AppState {
             pending_focus_cell: None,
             pending_changes: None,
             watcher: None,
+            history: None,
+            history_visible: true,
+            history_collapsed: false,
+            viewing_snapshot: None,
         }
     }
 }
@@ -89,15 +109,38 @@ impl AppState {
             .unwrap_or_default();
         let base_dir = self.file_path.as_ref().and_then(|p| p.parent());
 
-        // External-reload change bars: injected into the text pre-render and
-        // consumed (one-shot), matching the GTK refresh. Tables are parsed
-        // from the SAME (possibly marker-injected) text so their ids line up
-        // with the HTML the injector decorates.
-        let text = match self.pending_changes.take() {
-            Some(changes) => {
-                rendermd_core::diff::inject_change_markers(&self.text, &changes, self.dark)
+        // Snapshot browsing renders the historical text instead of the
+        // working copy; re-populate the diff-vs-parent markers if a refresh
+        // consumed them (theme flips etc.), matching the GTK refresh.
+        let source_text = match &self.viewing_snapshot {
+            Some(snap) => {
+                if self.pending_changes.is_none() {
+                    if let Some(parent) = &snap.parent_text {
+                        let changed =
+                            rendermd_core::diff::compute_changed_lines(parent, &snap.text);
+                        if !changed.is_empty() {
+                            self.pending_changes = Some(rendermd_core::diff::PendingChanges {
+                                changed_lines: changed,
+                                old_text: parent.clone(),
+                                reload_ts: snap.commit_unix_secs,
+                            });
+                        }
+                    }
+                }
+                snap.text.clone()
             }
             None => self.text.clone(),
+        };
+
+        // External-reload / snapshot change bars: injected into the text
+        // pre-render and consumed (one-shot), matching the GTK refresh.
+        // Tables are parsed from the SAME (possibly marker-injected) text so
+        // their ids line up with the HTML the injector decorates.
+        let text = match self.pending_changes.take() {
+            Some(changes) => {
+                rendermd_core::diff::inject_change_markers(&source_text, &changes, self.dark)
+            }
+            None => source_text,
         };
 
         let html =
@@ -109,7 +152,7 @@ impl AppState {
                 t.sort_indicator = Some((snap.col, snap.direction));
             }
         }
-        self.preview_html = if parsed_tables.is_empty() {
+        let html_with_tables = if parsed_tables.is_empty() {
             html
         } else {
             let injected = tables::render::inject_table_attrs(&html, &parsed_tables);
@@ -118,6 +161,26 @@ impl AppState {
                 &format!("{}\n</body>", tables::render::TABLE_EDIT_JS),
                 1,
             )
+        };
+
+        // Git history rail, injected before </body> when the file lives in
+        // a repo. No markup at all otherwise.
+        self.preview_html = match &self.history {
+            Some(commits) => {
+                let viewing = self.viewing_snapshot.as_ref().map(|s| s.sha.as_str());
+                let rail = rendermd_core::history::build_history_rail_html(
+                    commits,
+                    viewing,
+                    self.history_visible,
+                    self.history_collapsed,
+                );
+                if rail.is_empty() {
+                    html_with_tables
+                } else {
+                    html_with_tables.replacen("</body>", &format!("{rail}\n</body>"), 1)
+                }
+            }
+            None => html_with_tables,
         };
         self.preview_rev += 1;
     }

@@ -22,3 +22,5 @@ percent-encoding.workspace = true
 chrono.workspace = true
 tempfile = "3"
 notify = "6"
+toml = "0.8"
+dirs = "5"

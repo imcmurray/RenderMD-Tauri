@@ -2,6 +2,12 @@
 // dirty-close guard, statusbar.
 
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
+
+/** Drive a Rust preview channel from the shell (keyboard shortcuts share
+ * the dispatcher with in-frame clicks). */
+const invokePreviewChannel = (channel: string, payload = "") =>
+  invoke<void>("preview_message", { channel, payload });
 
 import * as bridge from "./bridge";
 import type { DocInfo, Mode } from "./bridge";
@@ -188,6 +194,9 @@ window.addEventListener("keydown", (e) => {
   } else if (ctrl && key === "n") {
     e.preventDefault();
     void actionNew();
+  } else if (ctrl && e.altKey && key === "h") {
+    e.preventDefault();
+    void invokePreviewChannel("toggleHistory");
   } else if (ctrl && (key === "q" || key === "w")) {
     e.preventDefault();
     void requestClose();

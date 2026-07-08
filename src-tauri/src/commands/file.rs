@@ -31,6 +31,10 @@ fn emit_preview_updated<R: Runtime>(app: &AppHandle<R>, rev: u64) {
 pub fn load_into_state(state: &mut AppState, path: PathBuf) -> Result<(), String> {
     let bytes = std::fs::read(&path).map_err(|e| format!("open {}: {e}", path.display()))?;
     state.text = String::from_utf8_lossy(&bytes).into_owned();
+    state.history = rendermd_core::history::fetch_git_history(&path);
+    state.viewing_snapshot = None;
+    state.pending_changes = None;
+    state.sort_snapshots.clear();
     state.file_path = Some(path);
     state.is_modified = false;
     // Loaded files open in preview mode; empty documents in edit mode.
