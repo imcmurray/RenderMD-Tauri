@@ -20,6 +20,13 @@
   box-sizing: border-box;
 }
 
+/* The hidden attribute must always win — author display rules (e.g. the
+   menu's `display: flex` buttons) would otherwise override the UA
+   stylesheet's display:none and un-hide elements. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
