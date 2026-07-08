@@ -87,6 +87,83 @@ pub fn save_file(state: State<'_, Mutex<AppState>>, text: String) -> Result<DocI
     Ok(DocInfo::from_state(&s))
 }
 
+/// Export the rendered document as standalone HTML. The in-app render uses
+/// root-relative `/fs/...` URLs that only the preview protocol understands,
+/// so exports rewrite the base href to `file://` and point the mermaid
+/// script at a bundle extracted to the user cache dir (matching how the GTK
+/// app's exports worked: viewable locally in any browser).
+#[tauri::command]
+pub fn export_html(state: State<'_, Mutex<AppState>>, dest: String) -> Result<(), String> {
+    use rendermd_core::render::{fs_base_href, PATH_SEGMENT_ENCODE};
+    use rendermd_core::template::MERMAID_ASSET_PATH;
+
+    let mut s = state.lock().unwrap();
+    let title = s
+        .file_path
+        .as_ref()
+        .and_then(|p| p.file_name())
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let base_dir = s.file_path.as_ref().and_then(|p| p.parent().map(|p| p.to_path_buf()));
+
+    // Fresh plain render: no table-edit JS, no history rail.
+    let mut html = rendermd_core::render::render_markdown_to_html(
+        &s.text,
+        base_dir.as_deref(),
+        s.dark,
+        &title,
+    );
+
+    if let Some(dir) = &base_dir {
+        let fs_base = fs_base_href(dir);
+        let dir_str = dir.to_string_lossy().replace('\\', "/");
+        let encoded =
+            percent_encoding::utf8_percent_encode(&dir_str, PATH_SEGMENT_ENCODE).to_string();
+        let file_base = if encoded.starts_with('/') {
+            format!("file://{encoded}/")
+        } else {
+            format!("file:///{encoded}/")
+        };
+        html = html.replace(
+            &format!("<base href=\"{fs_base}\">"),
+            &format!("<base href=\"{file_base}\">"),
+        );
+    }
+
+    // Mermaid: extract the bundle once to the cache dir and reference it.
+    if html.contains(MERMAID_ASSET_PATH) {
+        let cache = dirs::cache_dir()
+            .ok_or("no cache dir")?
+            .join("rendermd");
+        std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
+        let bundle = cache.join("mermaid.min.js");
+        if !bundle.exists() {
+            std::fs::write(&bundle, crate::preview_protocol::mermaid_bundle())
+                .map_err(|e| e.to_string())?;
+        }
+        let bundle_str = bundle.to_string_lossy().replace('\\', "/");
+        let encoded =
+            percent_encoding::utf8_percent_encode(&bundle_str, PATH_SEGMENT_ENCODE).to_string();
+        let uri = if encoded.starts_with('/') {
+            format!("file://{encoded}")
+        } else {
+            format!("file:///{encoded}")
+        };
+        html = html.replace(
+            &format!("src=\"{MERMAID_ASSET_PATH}\""),
+            &format!("src=\"{uri}\""),
+        );
+    }
+
+    // Same atomic tmp+rename discipline as document saves.
+    let mut dest = PathBuf::from(dest);
+    if dest.extension().is_none() {
+        dest.set_extension("html");
+    }
+    atomic_write(&mut s, &dest, &html)?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn save_file_as<R: Runtime>(
     app: AppHandle<R>,

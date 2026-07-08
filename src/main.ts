@@ -16,8 +16,10 @@ import { Preview } from "./preview";
 import {
   pickFileToOpen,
   pickSavePath,
+  pickExportHtmlPath,
   askUnsavedChanges,
   imageOptionsDialog,
+  infoDialog,
 } from "./dialogs";
 import { showToast } from "./toasts";
 
@@ -26,6 +28,8 @@ const els = {
   toggle: document.getElementById("btn-toggle") as HTMLButtonElement,
   open: document.getElementById("btn-open") as HTMLButtonElement,
   save: document.getElementById("btn-save") as HTMLButtonElement,
+  menuBtn: document.getElementById("btn-menu") as HTMLButtonElement,
+  menu: document.getElementById("app-menu")!,
   editorPane: document.getElementById("editor-pane")!,
   previewPane: document.getElementById("preview-pane") as HTMLIFrameElement,
   statusPath: document.getElementById("status-path")!,
@@ -175,6 +179,98 @@ els.open.addEventListener("click", () => void actionOpen());
 els.save.addEventListener("click", () => void actionSave());
 els.toggle.addEventListener("click", () => void toggleMode());
 
+// ---------------------------------------------------------------- menu
+
+async function actionExportHtml() {
+  const base = fileLabel().replace(/\.(md|markdown)$/i, "");
+  const dest = await pickExportHtmlPath(`${base}.html`);
+  if (!dest) return;
+  await editor.flushSync();
+  try {
+    await bridge.exportHtml(dest);
+    showToast(`Exported: ${dest}`);
+  } catch (e) {
+    showToast(`Export failed: ${e}`);
+  }
+}
+
+async function actionPrint() {
+  // The frame prints itself (window.print is not callable cross-origin);
+  // every OS print dialog offers Save-as-PDF. Make sure the preview is
+  // current and visible first.
+  if (mode === "edit") await toggleMode();
+  preview.send({ cmd: "print" });
+}
+
+async function actionAbout() {
+  const info = await bridge.getBuildInfo();
+  infoDialog(
+    "RenderMD",
+    `<p>A cross-platform Markdown viewer/editor.</p>
+     <p>Version ${info.version} (${info.gitSha})</p>
+     <p>Rendering: comrak (GFM) + syntect · mermaid · CodeMirror 6 · Tauri 2</p>`,
+  );
+}
+
+function actionShortcuts() {
+  infoDialog(
+    "Keyboard shortcuts",
+    `<table class="rmd-shortcuts">
+      <tr><td>F5 / Ctrl+Shift+E</td><td>Toggle preview ↔ edit</td></tr>
+      <tr><td>Ctrl+N</td><td>New document</td></tr>
+      <tr><td>Ctrl+O</td><td>Open…</td></tr>
+      <tr><td>Ctrl+S</td><td>Save</td></tr>
+      <tr><td>Ctrl+Shift+S</td><td>Save as…</td></tr>
+      <tr><td>Ctrl+Z / Ctrl+Shift+Z</td><td>Undo / redo (edit mode)</td></tr>
+      <tr><td>Ctrl+Alt+H</td><td>Toggle history rail</td></tr>
+      <tr><td>Ctrl+Q / Ctrl+W</td><td>Quit</td></tr>
+      <tr><td>Tab / Enter in table cell</td><td>Navigate cells (preview)</td></tr>
+    </table>`,
+  );
+}
+
+els.menuBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  els.menu.hidden = !els.menu.hidden;
+});
+window.addEventListener("click", () => {
+  els.menu.hidden = true;
+});
+els.menu.addEventListener("click", (e) => {
+  const btn = (e.target as HTMLElement).closest("button[data-action]");
+  if (!btn) return;
+  els.menu.hidden = true;
+  switch (btn.getAttribute("data-action")) {
+    case "new":
+      void actionNew();
+      break;
+    case "open":
+      void actionOpen();
+      break;
+    case "save":
+      void actionSave();
+      break;
+    case "save-as":
+      void actionSaveAs();
+      break;
+    case "export-html":
+      void actionExportHtml();
+      break;
+    case "print":
+      void actionPrint();
+      break;
+    case "toggle-history":
+      void invokePreviewChannel("toggleHistory");
+      break;
+    case "shortcuts":
+      actionShortcuts();
+      break;
+    case "about":
+      void actionAbout();
+      break;
+  }
+});
+
 // Global accelerators (matching the GTK app's accel table).
 window.addEventListener("keydown", (e) => {
   const ctrl = e.ctrlKey || e.metaKey;
@@ -197,6 +293,9 @@ window.addEventListener("keydown", (e) => {
   } else if (ctrl && e.altKey && key === "h") {
     e.preventDefault();
     void invokePreviewChannel("toggleHistory");
+  } else if (ctrl && (key === "?" || (e.shiftKey && key === "/"))) {
+    e.preventDefault();
+    actionShortcuts();
   } else if (ctrl && (key === "q" || key === "w")) {
     e.preventDefault();
     void requestClose();
@@ -278,6 +377,21 @@ void appWindow.onCloseRequested((event) => {
     event.preventDefault();
     void requestClose();
   }
+});
+
+// Drag-drop file open (OS paths come from Tauri, not DOM drop events).
+import("@tauri-apps/api/webview").then(({ getCurrentWebview }) => {
+  void getCurrentWebview().onDragDropEvent((event) => {
+    if (event.payload.type !== "drop" || event.payload.paths.length === 0) return;
+    const path = event.payload.paths[0];
+    if (!/\.(md|markdown|txt)$/i.test(path)) {
+      showToast("Drop a .md file to open it");
+      return;
+    }
+    void maybeSaveThen(async () => {
+      applyDoc(await bridge.openFile(path));
+    });
+  });
 });
 
 // Theme: keep Rust's renderer in sync with the OS scheme.

@@ -16,6 +16,7 @@ tauri-build = { version = "2", features = [] }
 rendermd-core = { path = "../crates/rendermd-core" }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
+tauri-plugin-window-state = "2"
 serde.workspace = true
 serde_json.workspace = true
 percent-encoding.workspace = true

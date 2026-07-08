@@ -17,6 +17,23 @@
         <div class="hb-title" id="title">RenderMD</div>
         <div class="hb-right">
           <button id="btn-toggle" title="Toggle edit/preview (F5)">Edit</button>
+          <div class="hb-menu-wrap">
+            <button id="btn-menu" title="Menu">☰</button>
+            <div id="app-menu" hidden>
+              <button data-action="new">New <span>Ctrl+N</span></button>
+              <button data-action="open">Open… <span>Ctrl+O</span></button>
+              <button data-action="save">Save <span>Ctrl+S</span></button>
+              <button data-action="save-as">Save As… <span>Ctrl+Shift+S</span></button>
+              <hr />
+              <button data-action="export-html">Export HTML…</button>
+              <button data-action="print">Print / PDF…</button>
+              <hr />
+              <button data-action="toggle-history">History rail <span>Ctrl+Alt+H</span></button>
+              <hr />
+              <button data-action="shortcuts">Keyboard shortcuts <span>Ctrl+?</span></button>
+              <button data-action="about">About RenderMD</button>
+            </div>
+          </div>
         </div>
       </header>
       <main id="content">

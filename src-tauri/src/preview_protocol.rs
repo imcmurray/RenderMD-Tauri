@@ -22,6 +22,11 @@ use crate::state::AppState;
 
 const MERMAID_BUNDLE: &[u8] = include_bytes!("../assets/mermaid.min.js");
 
+/// The embedded bundle, for HTML exports that need a file:// copy.
+pub fn mermaid_bundle() -> &'static [u8] {
+    MERMAID_BUNDLE
+}
+
 /// CSP for the preview document itself. Inline scripts/styles are ours
 /// (rendered by rendermd-core); external fetches are limited to this scheme.
 const PREVIEW_CSP: &str = "default-src 'none'; \

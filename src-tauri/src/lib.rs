@@ -34,6 +34,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(Mutex::new(initial_state))
         .register_uri_scheme_protocol("preview", |ctx, request| {
             preview_protocol::handle(ctx, request)
@@ -67,6 +68,8 @@ pub fn run() {
             commands::doc::set_mode,
             commands::doc::get_doc,
             commands::doc::set_dark,
+            commands::doc::get_build_info,
+            commands::file::export_html,
             commands::preview_msg::preview_message,
             commands::table::convert_table_paste,
             commands::image::image_change,

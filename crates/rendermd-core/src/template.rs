@@ -657,6 +657,7 @@ pub const PREVIEW_BRIDGE_JS: &str = r#"<script>(function(){
     if (d.cmd === 'scrollToSourceLine') scrollToSourceLine(d.line | 0);
     else if (d.cmd === 'reportTopLine') window.__rmdPost('topLine', String(topVisibleLine()));
     else if (d.cmd === 'focusCell') focusCell(d.tid, d.r, d.c, 10);
+    else if (d.cmd === 'print') window.print();
   });
   // TABLE_EDIT_JS may install rmdFocusCell a tick after this script runs —
   // retry briefly, matching the GTK app's injected one-shot.

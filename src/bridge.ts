@@ -62,6 +62,15 @@ export const onDocReplaced = (handler: (d: DocInfo) => void): Promise<UnlistenFn
 
 export const reloadFromDisk = () => invoke<void>("reload_from_disk");
 
+export const exportHtml = (dest: string) => invoke<void>("export_html", { dest });
+
+export interface BuildInfo {
+  version: string;
+  gitSha: string;
+}
+
+export const getBuildInfo = () => invoke<BuildInfo>("get_build_info");
+
 export interface ToastMsg {
   text: string;
 }

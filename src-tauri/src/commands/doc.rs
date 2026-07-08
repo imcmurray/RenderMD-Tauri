@@ -48,6 +48,15 @@ pub fn get_doc(state: State<'_, Mutex<AppState>>) -> DocInfo {
     DocInfo::from_state(&s)
 }
 
+/// Version + git SHA for the About dialog.
+#[tauri::command]
+pub fn get_build_info() -> serde_json::Value {
+    serde_json::json!({
+        "version": env!("CARGO_PKG_VERSION"),
+        "gitSha": env!("GIT_SHA"),
+    })
+}
+
 /// Theme flip from the frontend (`prefers-color-scheme` listener).
 #[tauri::command]
 pub fn set_dark<R: Runtime>(app: AppHandle<R>, state: State<'_, Mutex<AppState>>, dark: bool) {

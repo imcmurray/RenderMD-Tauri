@@ -55,6 +55,32 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
+export async function pickExportHtmlPath(defaultName: string): Promise<string | null> {
+  return saveDialog({
+    filters: [{ name: "HTML", extensions: ["html", "htm"] }],
+    defaultPath: defaultName,
+  });
+}
+
+/** Simple informational dialog with a title and pre-formatted body HTML. */
+export function infoDialog(title: string, bodyHtml: string) {
+  const dlg = document.createElement("dialog");
+  dlg.className = "rmd-dialog";
+  dlg.innerHTML = `
+    <h3>${escapeHtml(title)}</h3>
+    <div class="rmd-dialog-body">${bodyHtml}</div>
+    <div class="rmd-dialog-buttons">
+      <button class="suggested" autofocus>Close</button>
+    </div>`;
+  dlg.querySelector("button")!.addEventListener("click", () => {
+    dlg.close();
+    dlg.remove();
+  });
+  dlg.addEventListener("cancel", () => dlg.remove());
+  document.body.appendChild(dlg);
+  dlg.showModal();
+}
+
 export type ImageOptionsResult =
   | { action: "apply"; width: string | null; alt: string }
   | { action: "remove" }

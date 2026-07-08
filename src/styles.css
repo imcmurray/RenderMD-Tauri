@@ -226,6 +226,70 @@ body {
   opacity: 0;
 }
 
+/* Hamburger menu. */
+.hb-menu-wrap {
+  position: relative;
+}
+
+#app-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 240px;
+  background: var(--hb-bg);
+  border: 1px solid var(--hb-border);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+  padding: 6px;
+  z-index: 50;
+}
+
+#app-menu button {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+#app-menu button:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+#app-menu button span {
+  opacity: 0.55;
+  font-size: 12px;
+}
+
+#app-menu hr {
+  border: 0;
+  border-top: 1px solid var(--hb-border);
+  margin: 6px 4px;
+}
+
+/* Shortcuts table in the info dialog. */
+.rmd-shortcuts td {
+  padding: 3px 12px 3px 0;
+  font-size: 13px;
+}
+
+.rmd-shortcuts td:first-child {
+  font-family: ui-monospace, monospace;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.rmd-dialog-body p {
+  margin: 6px 0;
+}
+
 /* Image options dialog form. */
 .rmd-dialog-src {
   font-size: 12px;
