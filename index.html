@@ -30,6 +30,10 @@
               <hr />
               <button data-action="toggle-history">History rail <span>Ctrl+Alt+H</span></button>
               <hr />
+              <button data-action="install-update" id="menu-update" hidden>
+                Update available <span id="menu-update-ver"></span>
+              </button>
+              <button data-action="check-updates">Check for updates</button>
               <button data-action="shortcuts">Keyboard shortcuts <span>Ctrl+?</span></button>
               <button data-action="about">About RenderMD</button>
             </div>
@@ -42,6 +46,7 @@
       </main>
       <footer id="statusbar">
         <span id="status-path">No file</span>
+        <button id="status-update" hidden title="Download and install, then restart"></button>
         <span id="status-mtime"></span>
         <span id="status-mode">Preview</span>
       </footer>

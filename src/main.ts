@@ -3,6 +3,7 @@
 
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl, openPath } from "@tauri-apps/plugin-opener";
 
 /** Drive a Rust preview channel from the shell (keyboard shortcuts share
  * the dispatcher with in-frame clicks). */
@@ -22,6 +23,7 @@ import {
   infoDialog,
 } from "./dialogs";
 import { showToast } from "./toasts";
+import { initUpdater, checkForUpdate, installUpdate } from "./updater";
 
 const els = {
   title: document.getElementById("title")!,
@@ -105,6 +107,44 @@ preview.on("topLine", (payload) => {
   const n = parseInt(payload, 10);
   if (n === -1) editor.scrollToEnd();
   else if (n >= 1) editor.scrollToLine(n);
+});
+
+// External links in the preview open in the default browser; the pane
+// itself never navigates.
+preview.on("openExternal", (url) => {
+  if (/^https?:\/\//i.test(url) || /^[a-z][a-z0-9+.-]*:/i.test(url)) void openUrl(url);
+});
+
+/** preview-origin URL (…/fs/<encoded abs path>) → filesystem path.
+ * Mirrors the Rust protocol handler's mapping, including the Windows
+ * drive-letter case (/fs/C:/… → C:/…). */
+function fsUrlToPath(urlStr: string): string | null {
+  try {
+    const u = new URL(urlStr);
+    if (!u.pathname.startsWith("/fs/")) return null;
+    const decoded = decodeURIComponent(u.pathname.slice(4));
+    return /^[A-Za-z]:/.test(decoded) ? decoded : `/${decoded}`;
+  } catch {
+    return null;
+  }
+}
+
+// Relative links: .md files open in RenderMD (dirty-guarded); anything else
+// local goes to the system handler.
+preview.on("linkClick", (resolvedUrl) => {
+  const path = fsUrlToPath(resolvedUrl);
+  if (!path) return;
+  if (/\.(md|markdown)$/i.test(path)) {
+    void maybeSaveThen(async () => {
+      try {
+        applyDoc(await bridge.openFile(path));
+      } catch (e) {
+        showToast(String(e));
+      }
+    });
+  } else {
+    void openPath(path).catch((e) => showToast(String(e)));
+  }
 });
 
 // Image click in the preview → options dialog → Rust patch.
@@ -207,10 +247,26 @@ async function actionAbout() {
   infoDialog(
     "RenderMD",
     `<p>A cross-platform Markdown viewer/editor.</p>
-     <p>Version ${info.version} (${info.gitSha})</p>
-     <p>Rendering: comrak (GFM) + syntect · mermaid · CodeMirror 6 · Tauri 2</p>`,
+     <p>Version ${info.version}
+        (<a href="${info.repoUrl}/commit/${info.gitSha}">${info.gitSha}</a>)</p>
+     <p>Rendering: comrak (GFM) + syntect · mermaid · CodeMirror 6 · Tauri 2</p>
+     <p><a href="${info.repoUrl}">Repository</a> ·
+        <a href="${info.repoUrl}/issues">Report an issue</a> ·
+        <a href="${info.repoUrl}/releases">Releases</a></p>`,
   );
 }
+
+// Any <a href="http…"> inside the shell (About and friends) opens in the
+// default browser — the app window must never navigate away.
+window.addEventListener("click", (e) => {
+  const a = (e.target as HTMLElement).closest?.("a[href]");
+  if (!a) return;
+  const href = a.getAttribute("href") ?? "";
+  if (/^https?:\/\//i.test(href)) {
+    e.preventDefault();
+    void openUrl(href);
+  }
+});
 
 function actionShortcuts() {
   infoDialog(
@@ -262,6 +318,12 @@ els.menu.addEventListener("click", (e) => {
     case "toggle-history":
       void invokePreviewChannel("toggleHistory");
       break;
+    case "install-update":
+      void installUpdate();
+      break;
+    case "check-updates":
+      void checkForUpdate(true);
+      break;
     case "shortcuts":
       actionShortcuts();
       break;
@@ -269,6 +331,36 @@ els.menu.addEventListener("click", (e) => {
       void actionAbout();
       break;
   }
+});
+
+// ------------------------------------------------------------- updater
+
+const updateChip = document.getElementById("status-update") as HTMLButtonElement;
+const menuUpdate = document.getElementById("menu-update") as HTMLButtonElement;
+const menuUpdateVer = document.getElementById("menu-update-ver")!;
+
+updateChip.addEventListener("click", () => void installUpdate());
+
+initUpdater({
+  setAvailable: (version) => {
+    const has = version !== null;
+    updateChip.hidden = !has;
+    menuUpdate.hidden = !has;
+    if (has) {
+      updateChip.textContent = `⬆ Update to v${version}`;
+      menuUpdateVer.textContent = `v${version}`;
+    }
+  },
+  // The same never-lose-work guard as open/close: flush, then
+  // Save/Discard/Cancel if dirty. True = safe to install.
+  confirmSaved: async () => {
+    await editor.flushSync();
+    if (!dirty) return true;
+    const choice = await askUnsavedChanges(fileLabel());
+    if (choice === "cancel") return false;
+    if (choice === "save") return actionSave();
+    return true;
+  },
 });
 
 // Global accelerators (matching the GTK app's accel table).

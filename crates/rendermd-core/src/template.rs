@@ -374,6 +374,44 @@ body:has(.rmd-history-rail) {
   background: var(--border);
   pointer-events: none;
 }
+.rmd-history-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.rmd-history-item .rmd-history-circle {
+  flex: 1;
+  min-width: 0;
+}
+.rmd-history-link {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 2px 6px;
+  margin-right: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
+  position: relative;
+  z-index: 1;
+}
+.rmd-history-item:hover .rmd-history-link {
+  opacity: 1;
+}
+.rmd-history-link:hover {
+  color: var(--accent);
+  background: var(--code-bg);
+}
+.rmd-collapsed .rmd-history-link {
+  display: none;
+}
+.rmd-history-current .rmd-history-when {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .rmd-history-circle {
   display: flex;
   align-items: center;
@@ -571,6 +609,28 @@ body:has(.rmd-history-rail.rmd-collapsed) {
   border-radius: 2px;
   padding: 0 2px;
 }
+/* Print / save-as-PDF: zero page margins suppress the browser-generated
+   headers and footers (URL, title, date, page numbers) that WebKit and
+   WebView2 would otherwise stamp on every page — body padding stands in
+   for the page margins. Interactive chrome stays off the paper. */
+@media print {
+  @page {
+    margin: 0;
+  }
+  body {
+    padding: 15mm 18mm !important;
+  }
+  body:has(.rmd-history-rail) {
+    padding-left: 18mm !important;
+  }
+  .rmd-history-rail,
+  .rmd-history-hint,
+  .rmd-img-handle,
+  .rmd-th-resize-handle,
+  .rmd-table-toolbar {
+    display: none !important;
+  }
+}
 "#;
 
 // The `__rmdPost` shim in <head> is the preview's single IPC channel back to
@@ -677,6 +737,25 @@ pub const PREVIEW_BRIDGE_JS: &str = r#"<script>(function(){
       window.__rmdPost('previewScrolled', String(topVisibleLine()));
     }, 200);
   }, { passive: true });
+  // The preview must never navigate away from the document. http(s) links
+  // open in the default browser; everything else (relative links resolved
+  // against the base href) is handed to the shell, which opens .md files
+  // in the app and other local files with the system handler. In-page
+  // anchors keep their default behavior.
+  document.addEventListener('click', function(e) {
+    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a) return;
+    var href = a.getAttribute('href') || '';
+    if (href.charAt(0) === '#') return;
+    e.preventDefault();
+    if (/^https?:\/\//i.test(href)) { window.__rmdPost('openExternal', href); return; }
+    if (/^[a-z][a-z0-9+.-]*:/i.test(href) && href.indexOf('preview:') !== 0) {
+      window.__rmdPost('openExternal', href);
+      return;
+    }
+    // a.href is the base-resolved absolute URL (preview origin + /fs/...).
+    window.__rmdPost('linkClick', a.href);
+  }, true);
 })();</script>"#;
 
 // Image interactions in the rendered preview:

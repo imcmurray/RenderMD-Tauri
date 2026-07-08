@@ -243,11 +243,46 @@ pub fn format_mtime(path: &Path) -> String {
 // Empty string when there's no history. When `visible` is false but
 // commits exist, returns just an unobtrusive hint dot so the user
 // knows the option is there.
+/// Derive the repo's browseable web URL from its `origin` remote, for
+/// per-commit deep links (`<url>/commit/<sha>` works across GitHub, GitLab,
+/// and Gitea). Returns None when the file isn't in a repo or the remote
+/// isn't URL-shaped.
+pub fn remote_web_url(file_path: &Path) -> Option<String> {
+    let dir = file_path.parent()?;
+    let out = git_command()
+        .args(["-C"])
+        .arg(dir)
+        .args(["remote", "get-url", "origin"])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let raw = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let raw = raw.strip_suffix(".git").unwrap_or(&raw).to_string();
+    if raw.starts_with("http://") || raw.starts_with("https://") {
+        return Some(raw);
+    }
+    // git@host:owner/repo → https://host/owner/repo
+    if let Some(rest) = raw.strip_prefix("git@") {
+        if let Some((host, path)) = rest.split_once(':') {
+            return Some(format!("https://{host}/{path}"));
+        }
+    }
+    // ssh://git@host/owner/repo → https://host/owner/repo
+    if let Some(rest) = raw.strip_prefix("ssh://") {
+        let rest = rest.strip_prefix("git@").unwrap_or(rest);
+        return Some(format!("https://{rest}"));
+    }
+    None
+}
+
 pub fn build_history_rail_html(
     commits: &[Commit],
     viewing_sha: Option<&str>,
     visible: bool,
     collapsed: bool,
+    remote_url: Option<&str>,
 ) -> String {
     if commits.is_empty() {
         return String::new();
@@ -286,6 +321,21 @@ pub fn build_history_rail_html(
         chevron = chevron,
     ));
     html.push_str(r#"<div class="rmd-history-track"></div>"#);
+
+    // Synthetic "Current" entry: always first, active whenever no snapshot
+    // is being viewed, and the discoverable way back to the working copy
+    // (clicking the active commit again still works too).
+    {
+        let cls = if viewing_sha.is_none() {
+            "rmd-history-circle rmd-history-current rmd-history-active"
+        } else {
+            "rmd-history-circle rmd-history-current"
+        };
+        html.push_str(&format!(
+            r#"<div class="rmd-history-item"><button type="button" class="{cls}" data-sha="__working__" title="Working copy — the latest saved version"><span class="rmd-history-dot"></span><span class="rmd-history-info"><span class="rmd-history-when">Current</span></span></button></div>"#,
+        ));
+    }
+
     let now_secs = std::time::SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
@@ -310,14 +360,25 @@ pub fn build_history_rail_html(
         } else {
             "rmd-history-circle"
         };
+        // Optional deep link to the commit on the remote host — a sibling
+        // button (nesting buttons is invalid HTML), shown on hover.
+        let link = match remote_url {
+            Some(url) => format!(
+                r#"<button type="button" class="rmd-history-link" data-url="{url}/commit/{sha}" title="Open commit on remote" aria-label="Open commit on remote">↗</button>"#,
+                url = html_escape(url),
+                sha = html_escape(&c.sha),
+            ),
+            None => String::new(),
+        };
         html.push_str(&format!(
-            r#"<button type="button" class="{cls}" data-sha="{sha}" title="{title}"><span class="rmd-history-dot"></span><span class="rmd-history-info"><span class="rmd-history-when">{when}</span><span class="rmd-history-stat"><span class="rmd-history-add">+{add}</span><span class="rmd-history-del">−{del}</span></span></span></button>"#,
+            r#"<div class="rmd-history-item"><button type="button" class="{cls}" data-sha="{sha}" title="{title}"><span class="rmd-history-dot"></span><span class="rmd-history-info"><span class="rmd-history-when">{when}</span><span class="rmd-history-stat"><span class="rmd-history-add">+{add}</span><span class="rmd-history-del">−{del}</span></span></span></button>{link}</div>"#,
             cls = cls,
             sha = html_escape(&c.sha),
             title = html_escape(&tooltip),
             when = html_escape(&when_label),
             add = c.additions,
             del = c.deletions,
+            link = link,
         ));
     }
     html.push_str("</div>");
@@ -331,6 +392,12 @@ pub fn build_history_rail_html(
   document.querySelectorAll(".rmd-history-circle").forEach(function(c) {
     c.addEventListener("click", function() {
       window.__rmdPost("commitClick", c.getAttribute("data-sha") || "");
+    });
+  });
+  document.querySelectorAll(".rmd-history-link").forEach(function(l) {
+    l.addEventListener("click", function(e) {
+      e.stopPropagation();
+      window.__rmdPost("openExternal", l.getAttribute("data-url") || "");
     });
   });
   var tog = document.querySelector(".rmd-history-collapse");
@@ -389,18 +456,67 @@ mod tests {
             additions: 1,
             deletions: 2,
         }];
-        let html = build_history_rail_html(&commits, None, true, false);
+        let html = build_history_rail_html(&commits, None, true, false, None);
         assert!(html.contains(r#"window.__rmdPost("commitClick""#));
         assert!(html.contains(r#"window.__rmdPost("toggleHistoryCollapse""#));
         assert!(!html.contains("webkit.messageHandlers"));
 
-        let hidden = build_history_rail_html(&commits, None, false, false);
+        let hidden = build_history_rail_html(&commits, None, false, false, None);
         assert!(hidden.contains(r#"window.__rmdPost("toggleHistory""#));
         assert!(!hidden.contains("webkit.messageHandlers"));
     }
 
     #[test]
     fn rail_html_empty_without_commits() {
-        assert_eq!(build_history_rail_html(&[], None, true, false), "");
+        assert_eq!(build_history_rail_html(&[], None, true, false, None), "");
+    }
+
+    #[test]
+    fn rail_current_entry_first_and_active_on_working_copy() {
+        let commits = vec![Commit {
+            sha: "abc123".into(),
+            short_sha: "abc".into(),
+            iso_date: "2026-06-27T23:49:12-06:00".into(),
+            subject: "subject".into(),
+            additions: 1,
+            deletions: 2,
+        }];
+        let html = build_history_rail_html(&commits, None, true, false, None);
+        let current = html.find("__working__").expect("Current entry present");
+        let commit = html.find("abc123").expect("commit present");
+        assert!(current < commit, "Current entry must come first");
+        assert!(html.contains("rmd-history-current rmd-history-active"));
+
+        // Viewing a snapshot: Current no longer active, the commit is.
+        let viewing = build_history_rail_html(&commits, Some("abc123"), true, false, None);
+        assert!(!viewing.contains("rmd-history-current rmd-history-active"));
+    }
+
+    #[test]
+    fn rail_commit_links_only_with_remote() {
+        let commits = vec![Commit {
+            sha: "abc123".into(),
+            short_sha: "abc".into(),
+            iso_date: "2026-06-27T23:49:12-06:00".into(),
+            subject: "subject".into(),
+            additions: 1,
+            deletions: 2,
+        }];
+        // (The wiring JS always mentions the selector; assert on the button
+        // markup itself.)
+        let without = build_history_rail_html(&commits, None, true, false, None);
+        assert!(!without.contains(r#"class="rmd-history-link""#));
+
+        let with = build_history_rail_html(
+            &commits,
+            None,
+            true,
+            false,
+            Some("https://github.com/u/repo"),
+        );
+        assert!(with.contains(r#"data-url="https://github.com/u/repo/commit/abc123""#));
+        assert!(with.contains(r#"window.__rmdPost("openExternal""#));
+        // The synthetic Current entry never gets a commit link.
+        assert!(!with.contains("commit/__working__"));
     }
 }

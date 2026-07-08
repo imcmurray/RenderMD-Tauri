@@ -115,6 +115,22 @@ body {
   white-space: nowrap;
 }
 
+#status-update {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+#status-update:hover {
+  filter: brightness(1.15);
+}
+
 /* Editor pane fills its container; CM6 handles its own scrolling. */
 #editor-pane .cm-editor {
   height: 100%;
@@ -224,6 +240,29 @@ body {
 
 .rmd-toast-out {
   opacity: 0;
+}
+
+/* Links inside shell dialogs. */
+.rmd-dialog a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.rmd-dialog a:hover {
+  text-decoration: underline;
+}
+
+/* Print: if the top-level page ever gets printed (instead of the preview
+   frame printing itself), suppress browser headers/footers here too. */
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  #headerbar,
+  #statusbar {
+    display: none !important;
+  }
 }
 
 /* Hamburger menu. */

@@ -32,6 +32,8 @@ pub fn load_into_state(state: &mut AppState, path: PathBuf) -> Result<(), String
     let bytes = std::fs::read(&path).map_err(|e| format!("open {}: {e}", path.display()))?;
     state.text = String::from_utf8_lossy(&bytes).into_owned();
     state.history = rendermd_core::history::fetch_git_history(&path);
+    state.remote_url = rendermd_core::history::remote_web_url(&path);
+    state.showing_welcome = false;
     state.viewing_snapshot = None;
     state.pending_changes = None;
     state.sort_snapshots.clear();

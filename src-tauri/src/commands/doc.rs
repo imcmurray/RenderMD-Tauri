@@ -23,6 +23,8 @@ pub fn update_text<R: Runtime>(
         // must show what's being typed, not a historical revision.
         s.viewing_snapshot = None;
         s.pending_changes = None;
+        // Typing anything retires the welcome page.
+        s.showing_welcome = false;
     }
     s.render_preview();
     let _ = app.emit(
@@ -54,6 +56,7 @@ pub fn get_build_info() -> serde_json::Value {
     serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"),
         "gitSha": env!("GIT_SHA"),
+        "repoUrl": crate::state::APP_REPO_URL,
     })
 }
 

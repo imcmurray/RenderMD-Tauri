@@ -59,6 +59,39 @@ pub struct AppState {
     /// View-only historical revision being browsed via the rail. The buffer
     /// of record is untouched; editing the working copy clears this.
     pub viewing_snapshot: Option<HistorySnapshot>,
+    /// Browseable web URL of the open file's repo (from `origin`), for
+    /// per-commit deep links in the rail.
+    pub remote_url: Option<String>,
+    /// Launched with no file: the preview shows the welcome page until the
+    /// user opens a file or starts typing.
+    pub showing_welcome: bool,
+}
+
+/// The application's own repository (About links, welcome page).
+pub const APP_REPO_URL: &str = "https://github.com/imcmurray/RenderMD-Tauri";
+
+fn welcome_markdown() -> String {
+    format!(
+        r#"# Welcome to RenderMD 👋
+
+A fast Markdown viewer/editor. Open a file with **Ctrl+O** (or drop one on
+this window), or press **F5** to start writing.
+
+> [!TIP]
+> Tables and images are editable right here in the preview — click a table
+> cell or an image and go.
+
+## What's new in {version} (`{sha}`)
+
+{recent}
+
+Full history, issues, and downloads: [{repo}]({repo})
+"#,
+        version = env!("CARGO_PKG_VERSION"),
+        sha = env!("GIT_SHA"),
+        recent = include_str!(concat!(env!("OUT_DIR"), "/recent_changes.md")),
+        repo = APP_REPO_URL,
+    )
 }
 
 /// A commit being viewed via the history rail.
@@ -89,6 +122,8 @@ impl Default for AppState {
             history_visible: true,
             history_collapsed: false,
             viewing_snapshot: None,
+            remote_url: None,
+            showing_welcome: false,
         }
     }
 }
@@ -101,6 +136,19 @@ impl AppState {
     /// sort indicators from the snapshot map, inject `data-*` attributes and
     /// the click-to-edit JS. No-op when the doc has no tables.
     pub fn render_preview(&mut self) {
+        // File-less launch: the preview is the welcome page (the buffer of
+        // record stays empty, so nothing welcome-y can ever be saved).
+        if self.showing_welcome && self.text.is_empty() {
+            self.preview_html = rendermd_core::render::render_markdown_to_html(
+                &welcome_markdown(),
+                None,
+                self.dark,
+                "Welcome",
+            );
+            self.preview_rev += 1;
+            return;
+        }
+
         let title = self
             .file_path
             .as_ref()
@@ -173,6 +221,7 @@ impl AppState {
                     viewing,
                     self.history_visible,
                     self.history_collapsed,
+                    self.remote_url.as_deref(),
                 );
                 if rail.is_empty() {
                     html_with_tables

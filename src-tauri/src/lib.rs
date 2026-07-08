@@ -34,6 +34,9 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(Mutex::new(initial_state))
         .register_uri_scheme_protocol("preview", |ctx, request| {
@@ -41,7 +44,9 @@ pub fn run() {
         })
         .setup(|app| {
             // `rendermd file.md` — load a CLI argument before the window
-            // renders so get_doc() returns it at boot.
+            // renders so get_doc() returns it at boot. With no file, show
+            // the welcome page in preview mode.
+            let mut loaded = false;
             if let Some(arg) = std::env::args().nth(1) {
                 let path = std::path::Path::new(&arg);
                 if path.is_file() {
@@ -50,12 +55,20 @@ pub fn run() {
                     let mut s = state.lock().unwrap();
                     match commands::file::load_into_state(&mut s, abs.clone()) {
                         Ok(()) => {
+                            loaded = true;
                             drop(s);
                             watcher::start_watching(app.handle(), &abs);
                         }
                         Err(e) => eprintln!("rendermd: {e}"),
                     }
                 }
+            }
+            if !loaded {
+                let state = app.state::<Mutex<AppState>>();
+                let mut s = state.lock().unwrap();
+                s.showing_welcome = true;
+                s.mode = state::Mode::Preview;
+                s.render_preview();
             }
             Ok(())
         })

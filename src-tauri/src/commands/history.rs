@@ -17,6 +17,17 @@ pub fn handle_commit_click<R: Runtime>(app: &AppHandle<R>, s: &mut AppState, sha
         return;
     }
 
+    // The rail's synthetic "Current" entry. No-op when already on the
+    // working copy.
+    if sha == "__working__" {
+        if s.viewing_snapshot.take().is_some() {
+            s.pending_changes = None;
+            toast(app, "Returned to working copy");
+            refresh(app, s);
+        }
+        return;
+    }
+
     let already_viewing = s
         .viewing_snapshot
         .as_ref()

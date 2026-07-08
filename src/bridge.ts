@@ -67,6 +67,7 @@ export const exportHtml = (dest: string) => invoke<void>("export_html", { dest }
 export interface BuildInfo {
   version: string;
   gitSha: string;
+  repoUrl: string;
 }
 
 export const getBuildInfo = () => invoke<BuildInfo>("get_build_info");
