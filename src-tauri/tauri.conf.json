@@ -24,7 +24,8 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "//": "msi is excluded while the version carries a pre-release tag — WiX requires numeric-only versions. Re-add \"msi\" at 2.0.0 stable.",
+    "targets": ["appimage", "deb", "rpm", "nsis", "dmg", "app"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
