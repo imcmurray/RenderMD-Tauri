@@ -1,0 +1,30 @@
+# Maintainer: Ian McMurray <ian.mcmurray@gmail.com>
+# Repackages the Debian bundle built by the project's release CI.
+# Upstream: https://github.com/imcmurray/RenderMD-Tauri
+
+pkgname=rendermd-bin
+_appver=2.0.0-beta.1
+pkgver=2.0.0beta1 # pacman forbids hyphens in pkgver
+pkgrel=1
+pkgdesc="Cross-platform Markdown viewer/editor — rendered preview by default, one-key editor toggle, editable tables, mermaid, git history rail"
+arch=('x86_64')
+url="https://github.com/imcmurray/RenderMD-Tauri"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'hicolor-icon-theme')
+optdepends=('git: history rail and per-commit diff browsing')
+provides=('rendermd')
+conflicts=('rendermd')
+options=('!strip' '!emptydirs')
+source=("${url}/releases/download/v${_appver}/RenderMD_${_appver}_amd64.deb"
+        "LICENSE-${_appver}::https://raw.githubusercontent.com/imcmurray/RenderMD-Tauri/main/LICENSE")
+sha256sums=('SKIP'
+            'SKIP') # release automation pins real checksums per tag
+
+package() {
+    # The .deb's data archive maps 1:1 onto the Arch filesystem
+    # (usr/bin/rendermd, .desktop entry, hicolor icons).
+    bsdtar -xf data.tar.gz -C "$pkgdir/"
+    chmod 755 "$pkgdir/usr/bin/rendermd"
+    install -Dm644 "$srcdir/LICENSE-${_appver}" \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
