@@ -34,6 +34,15 @@ export class Preview {
     this.iframe = iframe;
 
     window.addEventListener("message", (e) => {
+      // Trust boundary: only accept messages that genuinely originate from
+      // OUR preview frame's window. Without this, any script embedded in a
+      // hostile markdown file — or any other frame/window — could forge
+      // {rmd:1, channel, …} messages and drive privileged channels
+      // (openExternal, linkClick, the Rust preview_message dispatcher).
+      // Source-identity is the robust check here: the sandboxed frame's
+      // origin is opaque ("null"), so an origin-string comparison wouldn't
+      // work, but contentWindow identity is unforgeable.
+      if (e.source !== this.iframe.contentWindow) return;
       const d = e.data as { rmd?: number; channel?: string; payload?: unknown };
       if (!d || d.rmd !== 1 || !d.channel) return;
       const payload = String(d.payload ?? "");

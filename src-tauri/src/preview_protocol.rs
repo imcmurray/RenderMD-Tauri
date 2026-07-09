@@ -62,20 +62,36 @@ pub fn handle<R: tauri::Runtime>(
     }
 
     if let Some(rest) = path.strip_prefix("/fs/") {
-        return serve_local_file(rest);
+        let root = ctx
+            .app_handle()
+            .state::<Mutex<AppState>>()
+            .lock()
+            .unwrap()
+            .allowed_fs_root
+            .clone();
+        return serve_local_file(rest, root.as_deref());
     }
 
     not_found()
 }
 
-fn serve_local_file(encoded: &str) -> Response<Vec<u8>> {
+/// Serve a local file referenced by the document — CONFINED to the allowed
+/// root (git top-level or doc dir). A hostile markdown file cannot read
+/// outside that tree via `/fs/etc/passwd` or `../` escapes: the path is
+/// canonicalized (symlinks + `..` resolved) and rejected unless it stays
+/// within the root. See rendermd_core::fsroot.
+fn serve_local_file(encoded: &str, root: Option<&std::path::Path>) -> Response<Vec<u8>> {
     let decoded = percent_decode_str(encoded).decode_utf8_lossy();
     // `/fs/home/ianm/notes/img.png` → `/home/ianm/notes/img.png`;
     // on Windows `/fs/C:/Users/...` → `C:/Users/...`.
     #[cfg(windows)]
-    let fs_path = PathBuf::from(decoded.as_ref());
+    let requested = PathBuf::from(decoded.as_ref());
     #[cfg(not(windows))]
-    let fs_path = PathBuf::from(format!("/{decoded}"));
+    let requested = PathBuf::from(format!("/{decoded}"));
+
+    let Some(fs_path) = rendermd_core::fsroot::resolve_within(root, &requested) else {
+        return not_found();
+    };
 
     match std::fs::read(&fs_path) {
         Ok(bytes) => Response::builder()

@@ -2,6 +2,7 @@ pub mod doc;
 pub mod file;
 pub mod history;
 pub mod image;
+pub mod link;
 pub mod preview_msg;
 pub mod table;
 

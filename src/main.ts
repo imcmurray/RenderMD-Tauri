@@ -21,6 +21,7 @@ import {
   askUnsavedChanges,
   imageOptionsDialog,
   infoDialog,
+  confirmDialog,
 } from "./dialogs";
 import { showToast } from "./toasts";
 import { initUpdater, checkForUpdate, installUpdate } from "./updater";
@@ -109,42 +110,44 @@ preview.on("topLine", (payload) => {
   else if (n >= 1) editor.scrollToLine(n);
 });
 
-// External links in the preview open in the default browser; the pane
-// itself never navigates.
+// External links in the preview open in the default browser. Only web +
+// mail schemes are allowed: a hostile markdown link like [x](smb://evil),
+// [x](file:///…), or [x](vscode://…) must never reach the OS opener (SMB
+// NetNTLM leak, arbitrary local open, app-protocol abuse).
+const SAFE_EXTERNAL = /^(https?|mailto):/i;
 preview.on("openExternal", (url) => {
-  if (/^https?:\/\//i.test(url) || /^[a-z][a-z0-9+.-]*:/i.test(url)) void openUrl(url);
+  if (SAFE_EXTERNAL.test(url)) void openUrl(url);
+  else showToast("Blocked a link with a non-web scheme");
 });
 
-/** preview-origin URL (…/fs/<encoded abs path>) → filesystem path.
- * Mirrors the Rust protocol handler's mapping, including the Windows
- * drive-letter case (/fs/C:/… → C:/…). */
-function fsUrlToPath(urlStr: string): string | null {
-  try {
-    const u = new URL(urlStr);
-    if (!u.pathname.startsWith("/fs/")) return null;
-    const decoded = decodeURIComponent(u.pathname.slice(4));
-    return /^[A-Za-z]:/.test(decoded) ? decoded : `/${decoded}`;
-  } catch {
-    return null;
-  }
-}
-
-// Relative links: .md files open in RenderMD (dirty-guarded); anything else
-// local goes to the system handler.
+// Relative links resolve server-side, confined to the document's repo/dir
+// root: .md files open in RenderMD (dirty-guarded); other local files
+// require an explicit confirm before the system opener runs; anything
+// outside the root is blocked. All confinement is authoritative in Rust —
+// the frame's own (attacker-authored) script can't widen it.
 preview.on("linkClick", (resolvedUrl) => {
-  const path = fsUrlToPath(resolvedUrl);
-  if (!path) return;
-  if (/\.(md|markdown)$/i.test(path)) {
-    void maybeSaveThen(async () => {
-      try {
-        applyDoc(await bridge.openFile(path));
-      } catch (e) {
-        showToast(String(e));
-      }
-    });
-  } else {
-    void openPath(path).catch((e) => showToast(String(e)));
-  }
+  void (async () => {
+    const res = await bridge.resolveLocalLink(resolvedUrl).catch(() => null);
+    if (!res || res.action === "denied") {
+      showToast("Blocked a link outside the document's folder");
+      return;
+    }
+    if (res.action === "open-md") {
+      void maybeSaveThen(async () => {
+        try {
+          applyDoc(await bridge.openFile(res.path));
+        } catch (e) {
+          showToast(String(e));
+        }
+      });
+    } else if (res.action === "open-file") {
+      const ok = await confirmDialog(
+        "Open this file?",
+        `“${res.path}” will open in your system's default application.`,
+      );
+      if (ok) void openPath(res.path).catch((e) => showToast(String(e)));
+    }
+  })();
 });
 
 // Image click in the preview → options dialog → Rust patch.

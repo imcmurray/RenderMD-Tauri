@@ -3,3 +3,11 @@ node_modules/
 dist/
 src-tauri/gen/schemas/
 *.log
+
+# Never commit signing keys or secrets (belt-and-suspenders — the updater
+# private key lives in ~/.config, not here).
+*.key
+*.pem
+.env
+.env.*
+!*.pub

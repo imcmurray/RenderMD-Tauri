@@ -33,6 +33,7 @@ pub fn load_into_state(state: &mut AppState, path: PathBuf) -> Result<(), String
     state.text = String::from_utf8_lossy(&bytes).into_owned();
     state.history = rendermd_core::history::fetch_git_history(&path);
     state.remote_url = rendermd_core::history::remote_web_url(&path);
+    state.allowed_fs_root = rendermd_core::fsroot::allowed_root(&path);
     state.showing_welcome = false;
     state.viewing_snapshot = None;
     state.pending_changes = None;

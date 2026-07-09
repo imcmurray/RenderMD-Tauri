@@ -87,6 +87,7 @@ pub fn run() {
             commands::table::convert_table_paste,
             commands::image::image_change,
             commands::image::paste_image,
+            commands::link::resolve_local_link,
             watcher::reload_from_disk,
         ])
         .run(tauri::generate_context!())

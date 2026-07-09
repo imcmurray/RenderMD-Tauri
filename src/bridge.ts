@@ -72,6 +72,15 @@ export interface BuildInfo {
 
 export const getBuildInfo = () => invoke<BuildInfo>("get_build_info");
 
+export type LinkResolution =
+  | { action: "open-md"; path: string }
+  | { action: "open-file"; path: string }
+  | { action: "denied" };
+
+/** Confine + classify a preview link click server-side. */
+export const resolveLocalLink = (url: string) =>
+  invoke<LinkResolution>("resolve_local_link", { url });
+
 export interface ToastMsg {
   text: string;
 }

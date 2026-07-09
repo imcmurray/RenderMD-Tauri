@@ -62,6 +62,9 @@ pub struct AppState {
     /// Browseable web URL of the open file's repo (from `origin`), for
     /// per-commit deep links in the rail.
     pub remote_url: Option<String>,
+    /// Confinement root for `preview://.../fs/` reads (git top-level or the
+    /// doc directory). None = no document open = deny all local-file reads.
+    pub allowed_fs_root: Option<std::path::PathBuf>,
     /// Launched with no file: the preview shows the welcome page until the
     /// user opens a file or starts typing.
     pub showing_welcome: bool,
@@ -123,6 +126,7 @@ impl Default for AppState {
             history_collapsed: false,
             viewing_snapshot: None,
             remote_url: None,
+            allowed_fs_root: None,
             showing_welcome: false,
         }
     }

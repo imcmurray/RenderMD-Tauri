@@ -16,6 +16,7 @@
 
 pub mod diff;
 pub mod emoji;
+pub mod fsroot;
 pub mod history;
 pub mod images;
 pub mod preprocess;

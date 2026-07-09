@@ -42,7 +42,11 @@
       </header>
       <main id="content">
         <div id="editor-pane" hidden></div>
-        <iframe id="preview-pane" title="Preview"></iframe>
+        <!-- allow-scripts (mermaid, table-edit JS, the bridge) but NOT
+             allow-same-origin: the frame gets an opaque origin, so
+             preview:// subresources are cross-origin and can't be read back
+             via canvas.toDataURL() — closing the file-exfil path. -->
+        <iframe id="preview-pane" title="Preview" sandbox="allow-scripts"></iframe>
       </main>
       <footer id="statusbar">
         <span id="status-path">No file</span>

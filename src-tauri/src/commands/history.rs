@@ -28,6 +28,14 @@ pub fn handle_commit_click<R: Runtime>(app: &AppHandle<R>, s: &mut AppState, sha
         return;
     }
 
+    // The frame is attacker-controlled, so `sha` is untrusted. It flows into
+    // `git show <sha>:<path>` / `git rev-parse <sha>^` as argv. Require a
+    // bare hex object id: no leading `-` (option injection), no `:`/`..`
+    // (revision-range or path tricks). Our own rail only ever emits these.
+    if !(7..=40).contains(&sha.len()) || !sha.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return;
+    }
+
     let already_viewing = s
         .viewing_snapshot
         .as_ref()

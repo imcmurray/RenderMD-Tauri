@@ -62,6 +62,42 @@ export async function pickExportHtmlPath(defaultName: string): Promise<string | 
   });
 }
 
+/** Yes/no confirmation. Resolves true only on explicit confirm. Body text
+ * is inserted as textContent (never HTML) so caller-supplied paths can't
+ * inject markup. */
+export function confirmDialog(title: string, body: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const dlg = document.createElement("dialog");
+    dlg.className = "rmd-dialog";
+    const h = document.createElement("h3");
+    h.textContent = title;
+    const p = document.createElement("p");
+    p.textContent = body;
+    const buttons = document.createElement("div");
+    buttons.className = "rmd-dialog-buttons";
+    buttons.innerHTML = `
+      <button data-choice="cancel">Cancel</button>
+      <button data-choice="ok" class="suggested" autofocus>Open</button>`;
+    dlg.append(h, p, buttons);
+    const done = (v: boolean) => {
+      dlg.close();
+      dlg.remove();
+      resolve(v);
+    };
+    buttons.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest("button[data-choice]");
+      if (!btn) return;
+      done(btn.getAttribute("data-choice") === "ok");
+    });
+    dlg.addEventListener("cancel", () => {
+      dlg.remove();
+      resolve(false);
+    });
+    document.body.appendChild(dlg);
+    dlg.showModal();
+  });
+}
+
 /** Simple informational dialog with a title and pre-formatted body HTML. */
 export function infoDialog(title: string, bodyHtml: string) {
   const dlg = document.createElement("dialog");

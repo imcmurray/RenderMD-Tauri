@@ -14,6 +14,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Verify vendored mermaid bundle integrity
+        run: |
+          cd src-tauri/assets
+          sha256sum -c mermaid.min.js.sha256
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy

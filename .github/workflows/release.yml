@@ -35,15 +35,20 @@ jobs:
           - platform: windows-latest
             args: ""
     runs-on: ${{ matrix.platform }}
+    # Third-party actions are pinned to full commit SHAs: this job holds the
+    # code-signing private key (TAURI_SIGNING_PRIVATE_KEY) — the single
+    # secret the entire update-signature guarantee rests on — so a hijacked
+    # floating tag must not be able to run in this context and exfiltrate it.
+    # Bump these deliberately (Dependabot for github-actions keeps them fresh).
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # stable @ 2026-07
         with:
           # Both architectures for the macOS universal binary; harmless
           # no-ops elsewhere.
@@ -56,13 +61,13 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
             libappindicator3-dev librsvg2-dev patchelf
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@82a92a6e8fbeee089604da2575dc567ae9ddeaab # v2.7.5
         with:
           workspaces: ". -> target"
 
       - run: npm ci
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@42e9df6c59070d114bf90dcd3943a1b8f138b113 # v0.5.20
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Updater artifact signing (latest.json + per-platform .sig files).

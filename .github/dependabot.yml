@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Keep the SHA-pinned GitHub Actions current — especially the ones in the
+  # release job that handle the code-signing key.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
