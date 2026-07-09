@@ -26,6 +26,14 @@ jobs:
       contents: write
     strategy:
       fail-fast: false
+      # Serialize the matrix. tauri-action MERGES each platform into the
+      # release's latest.json, but run concurrently the three jobs race:
+      # each reads latest.json, adds its own platform, and writes back —
+      # last-write-wins silently drops the others (beta.3 shipped a
+      # macOS-only manifest this way, breaking Windows/Linux auto-update).
+      # max-parallel: 1 makes each job merge into the previous job's
+      # complete manifest. Slower (~3× wall clock) but correct.
+      max-parallel: 1
       matrix:
         include:
           - platform: macos-latest
