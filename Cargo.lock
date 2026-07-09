@@ -3213,7 +3213,7 @@ dependencies = [
  "tauri-plugin-updater",
  "tauri-plugin-window-state",
  "tempfile",
- "toml 0.8.2",
+ "toml 1.1.2+spec-1.1.0",
 ]
 
 [[package]]
