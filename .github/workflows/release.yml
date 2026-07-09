@@ -50,6 +50,9 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # stable @ 2026-07
         with:
+          # SHA-pinning drops the channel the @stable ref used to supply, so
+          # name it explicitly.
+          toolchain: stable
           # Both architectures for the macOS universal binary; harmless
           # no-ops elsewhere.
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
