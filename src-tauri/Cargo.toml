@@ -27,6 +27,6 @@ serde_json.workspace = true
 percent-encoding.workspace = true
 chrono.workspace = true
 tempfile = "3"
-notify = "6"
+notify = "8"
 toml = "0.8"
 dirs = "5"
