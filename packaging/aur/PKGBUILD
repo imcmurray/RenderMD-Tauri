@@ -24,8 +24,9 @@ sha256sums=('bfd328b55a8a03c2f673456f41bfbd41be24001d62a5317219dba8249e2bb16a'
 
 package() {
     # The .deb's data archive maps 1:1 onto the Arch filesystem
-    # (usr/bin/rendermd, .desktop entry, hicolor icons).
-    bsdtar -xf data.tar.gz -C "$pkgdir/"
+    # (usr/bin/rendermd, .desktop entry, hicolor icons). Tauri has
+    # shipped gz/xz/zst payloads across versions.
+    bsdtar -xf data.tar.* -C "$pkgdir/"
     chmod 755 "$pkgdir/usr/bin/rendermd"
     # Current release desktop file has no MimeType and no %f, so clicks
     # would launch an empty window. Overlay the Linux launcher that

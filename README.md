@@ -36,7 +36,24 @@ builds possible.
 - **Atomic saves** (temp file + rename) so a power blip can't leave a
   half-written file.
 - Export to standalone HTML; print (or save as PDF) via the system dialog.
-- Live light/dark theme switching following the OS.
+- Live light/dark theme switching following the OS. On Omarchy, chrome and
+  preview follow `~/.local/state/omarchy/current/theme/colors.toml`.
+
+## Arch / Omarchy
+
+The AUR package is `rendermd-bin` (`packaging/aur/`). New AUR accounts are
+closed as of August 2026, so it is not published yet. Until then, build from
+the PKGBUILD:
+
+```bash
+git clone https://github.com/imcmurray/RenderMD-Tauri.git
+cd RenderMD-Tauri/packaging/aur
+makepkg -si
+xdg-mime default RenderMD.desktop text/markdown
+```
+
+Once the AUR package is up, Omarchy users can install it with
+`omarchy pkg aur add rendermd-bin`.
 
 ## Build
 
