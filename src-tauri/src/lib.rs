@@ -1,6 +1,7 @@
 //! RenderMD Tauri shell.
 
 mod commands;
+mod omarchy;
 mod preview_protocol;
 mod settings;
 mod state;
@@ -11,6 +12,19 @@ use std::sync::Mutex;
 use tauri::Manager;
 
 use state::AppState;
+
+/// Turn a desktop/CLI argument into a filesystem path.
+/// Nautilus/`xdg-open` pass a local path with `%f`; some launchers pass `file://`.
+fn path_from_cli_arg(arg: &str) -> std::path::PathBuf {
+    if let Some(rest) = arg.strip_prefix("file://") {
+        let rest = rest.strip_prefix("localhost").unwrap_or(rest);
+        let decoded = percent_encoding::percent_decode_str(rest)
+            .decode_utf8_lossy()
+            .into_owned();
+        return std::path::PathBuf::from(decoded);
+    }
+    std::path::PathBuf::from(arg)
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -26,9 +40,15 @@ pub fn run() {
     }
 
     let ui_settings = settings::load();
+    let palette = omarchy::load_palette();
     let initial_state = AppState {
         history_visible: ui_settings.history_visible,
         history_collapsed: ui_settings.history_collapsed,
+        dark: palette.as_ref().map(|p| p.dark).unwrap_or(false),
+        omarchy_css: palette
+            .as_ref()
+            .map(|p| p.preview_css())
+            .unwrap_or_default(),
         ..AppState::default()
     };
 
@@ -48,9 +68,9 @@ pub fn run() {
             // the welcome page in preview mode.
             let mut loaded = false;
             if let Some(arg) = std::env::args().nth(1) {
-                let path = std::path::Path::new(&arg);
+                let path = path_from_cli_arg(&arg);
                 if path.is_file() {
-                    let abs = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+                    let abs = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
                     let state = app.state::<Mutex<AppState>>();
                     let mut s = state.lock().unwrap();
                     match commands::file::load_into_state(&mut s, abs.clone()) {
@@ -70,6 +90,7 @@ pub fn run() {
                 s.mode = state::Mode::Preview;
                 s.render_preview();
             }
+            omarchy::start_watching(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -82,6 +103,7 @@ pub fn run() {
             commands::doc::get_doc,
             commands::doc::set_dark,
             commands::doc::get_build_info,
+            omarchy::get_omarchy_theme,
             commands::file::export_html,
             commands::preview_msg::preview_message,
             commands::table::convert_table_paste,

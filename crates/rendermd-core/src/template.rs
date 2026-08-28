@@ -645,6 +645,7 @@ pub const HTML_TEMPLATE: &str = r#"<!doctype html>
 <title>{TITLE}</title>
 <style>
 {THEME_CSS}
+{EXTRA_CSS}
 {BASE_CSS}
 </style>
 <base href="{BASE_HREF}">

@@ -1,0 +1,23 @@
+pkgbase = rendermd-bin
+	pkgdesc = Cross-platform Markdown viewer/editor — rendered preview by default, one-key editor toggle, editable tables, mermaid, git history rail
+	pkgver = 2.0.0beta4
+	pkgrel = 1
+	url = https://github.com/imcmurray/RenderMD-Tauri
+	arch = x86_64
+	license = MIT
+	depends = webkit2gtk-4.1
+	depends = gtk3
+	depends = hicolor-icon-theme
+	optdepends = git: history rail and per-commit diff browsing
+	provides = rendermd
+	conflicts = rendermd
+	options = !strip
+	options = !emptydirs
+	source = https://github.com/imcmurray/RenderMD-Tauri/releases/download/v2.0.0-beta.4/RenderMD_2.0.0-beta.4_amd64.deb
+	source = LICENSE-2.0.0-beta.4::https://raw.githubusercontent.com/imcmurray/RenderMD-Tauri/v2.0.0-beta.4/LICENSE
+	source = RenderMD.desktop
+	sha256sums = bfd328b55a8a03c2f673456f41bfbd41be24001d62a5317219dba8249e2bb16a
+	sha256sums = 42ff7afeb6ecfd4fd04b079c039fa3f8450decc9f91797be9c26e2c36b5cb000
+	sha256sums = 232e1f4a2ff30382e59576158072a6e45c8dfd6c7797164991612282592fc8c3
+
+pkgname = rendermd-bin

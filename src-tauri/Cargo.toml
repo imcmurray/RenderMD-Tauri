@@ -18,15 +18,15 @@ tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-window-state = "2"
+percent-encoding.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+dirs = "5"
+notify = "6"
+toml = "0.8"
 
 [target."cfg(any(target_os = \"macos\", windows, target_os = \"linux\"))".dependencies]
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
-serde.workspace = true
-serde_json.workspace = true
-percent-encoding.workspace = true
 chrono.workspace = true
 tempfile = "3"
-notify = "6"
-toml = "0.8"
-dirs = "5"

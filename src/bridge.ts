@@ -2,6 +2,9 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { OmarchyPalette } from "./theme";
+
+export type { OmarchyPalette };
 
 export type Mode = "preview" | "edit";
 
@@ -23,6 +26,12 @@ export const saveFileAs = (path: string, text: string) =>
 export const updateText = (text: string) => invoke<number>("update_text", { text });
 export const setMode = (mode: Mode) => invoke<void>("set_mode", { mode });
 export const setDark = (dark: boolean) => invoke<void>("set_dark", { dark });
+
+export const getOmarchyTheme = () => invoke<OmarchyPalette | null>("get_omarchy_theme");
+
+export const onOmarchyTheme = (
+  handler: (p: OmarchyPalette) => void,
+): Promise<UnlistenFn> => listen<OmarchyPalette>("omarchy-theme", (e) => handler(e.payload));
 
 export interface PreviewUpdated {
   rev: number;

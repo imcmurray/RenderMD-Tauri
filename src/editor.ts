@@ -49,6 +49,18 @@ export class Editor {
         keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
         markdown({ codeLanguages: languages }),
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        EditorView.theme({
+          "&": {
+            height: "100%",
+            backgroundColor: "var(--hb-bg)",
+            color: "var(--hb-fg)",
+          },
+          ".cm-content": { caretColor: "var(--accent)" },
+          ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--accent)" },
+          "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
+            backgroundColor: "var(--hb-selection) !important",
+          },
+        }),
         EditorView.lineWrapping,
         EditorView.updateListener.of((u) => {
           if (!u.docChanged) return;

@@ -70,6 +70,7 @@ pub fn new_file<R: Runtime>(
     let mut s = state.lock().unwrap();
     *s = AppState {
         dark: s.dark,
+        omarchy_css: s.omarchy_css.clone(),
         ..AppState::default()
     };
     // Dropping the old state above also dropped its watcher.

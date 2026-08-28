@@ -61,9 +61,13 @@ pub fn get_build_info() -> serde_json::Value {
 }
 
 /// Theme flip from the frontend (`prefers-color-scheme` listener).
+/// Ignored while an Omarchy palette is driving the colors.
 #[tauri::command]
 pub fn set_dark<R: Runtime>(app: AppHandle<R>, state: State<'_, Mutex<AppState>>, dark: bool) {
     let mut s = state.lock().unwrap();
+    if !s.omarchy_css.is_empty() {
+        return;
+    }
     if s.dark != dark {
         s.dark = dark;
         s.render_preview();

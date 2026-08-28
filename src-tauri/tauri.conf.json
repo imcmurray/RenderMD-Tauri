@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "RenderMD",
-  "version": "2.0.0-beta.4",
+  "version": "2.0.0-beta.5",
   "identifier": "io.github.rendermd.RenderMD",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -15,6 +15,7 @@
         "title": "RenderMD",
         "width": 1100,
         "height": 800,
+        "decorations": false,
         "dragDropEnabled": true
       }
     ],
@@ -46,6 +47,15 @@
     ],
     "category": "Productivity",
     "shortDescription": "Markdown viewer/editor",
-    "longDescription": "RenderMD opens .md files in a rendered preview by default and toggles to a syntax-highlighted editor. GFM tables, mermaid diagrams, GitHub alerts, emoji shortcodes, git history browsing."
+    "longDescription": "RenderMD opens .md files in a rendered preview by default and toggles to a syntax-highlighted editor. GFM tables, mermaid diagrams, GitHub alerts, emoji shortcodes, git history browsing.",
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "mdown"],
+        "mimeType": "text/markdown",
+        "description": "Markdown document",
+        "role": "Editor",
+        "rank": "Default"
+      }
+    ]
   }
 }

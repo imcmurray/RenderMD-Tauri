@@ -115,6 +115,16 @@ pub fn render_markdown_to_html(
     dark: bool,
     title: &str,
 ) -> String {
+    render_markdown_to_html_with_extra_css(text, base_dir, dark, title, "")
+}
+
+pub fn render_markdown_to_html_with_extra_css(
+    text: &str,
+    base_dir: Option<&Path>,
+    dark: bool,
+    title: &str,
+    extra_css: &str,
+) -> String {
     // Comrak gets us GFM-style features matching the Python python-markdown +
     // pymdown-extensions setup: tables, strikethrough, autolinks, task lists,
     // footnotes, smart quotes, superscript, description lists.
@@ -184,6 +194,7 @@ pub fn render_markdown_to_html(
     HTML_TEMPLATE
         .replace("{TITLE}", &title_safe)
         .replace("{THEME_CSS}", theme_css)
+        .replace("{EXTRA_CSS}", extra_css)
         .replace("{BASE_CSS}", PREVIEW_CSS_BASE)
         .replace("{BASE_HREF}", &base_href)
         .replace("{BODY}", &body)

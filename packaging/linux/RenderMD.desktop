@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=RenderMD
+GenericName=Markdown Viewer
+Comment=Rendered Markdown viewer and editor
+Exec=rendermd %f
+TryExec=rendermd
+Icon=rendermd
+Terminal=false
+Categories=Office;TextEditor;Viewer;
+MimeType=text/markdown;text/x-markdown;
+Keywords=markdown;md;preview;editor;tables;
+StartupWMClass=rendermd
+StartupNotify=true

@@ -37,6 +37,8 @@ pub struct AppState {
     /// Bumped on every re-render; the frontend busts the iframe cache with it.
     pub preview_rev: u64,
     pub dark: bool,
+    /// Extra preview CSS from the live Omarchy palette (empty off-Omarchy).
+    pub omarchy_css: String,
     /// Stamped immediately before our own atomic-save rename so the file
     /// watcher (Phase 6) can suppress self-generated change events.
     pub last_self_write: Instant,
@@ -116,6 +118,7 @@ impl Default for AppState {
             preview_html: String::new(),
             preview_rev: 0,
             dark: false,
+            omarchy_css: String::new(),
             last_self_write: Instant::now(),
             sort_snapshots: HashMap::new(),
             pending_focus_cell: None,
@@ -143,11 +146,12 @@ impl AppState {
         // File-less launch: the preview is the welcome page (the buffer of
         // record stays empty, so nothing welcome-y can ever be saved).
         if self.showing_welcome && self.text.is_empty() {
-            self.preview_html = rendermd_core::render::render_markdown_to_html(
+            self.preview_html = rendermd_core::render::render_markdown_to_html_with_extra_css(
                 &welcome_markdown(),
                 None,
                 self.dark,
                 "Welcome",
+                &self.omarchy_css,
             );
             self.preview_rev += 1;
             return;
@@ -195,8 +199,13 @@ impl AppState {
             None => source_text,
         };
 
-        let html =
-            rendermd_core::render::render_markdown_to_html(&text, base_dir, self.dark, &title);
+        let html = rendermd_core::render::render_markdown_to_html_with_extra_css(
+            &text,
+            base_dir,
+            self.dark,
+            &title,
+            &self.omarchy_css,
+        );
 
         let mut parsed_tables = tables::parse_tables(&text);
         for t in &mut parsed_tables {

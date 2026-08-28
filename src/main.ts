@@ -25,9 +25,9 @@ import {
 } from "./dialogs";
 import { showToast } from "./toasts";
 import { initUpdater, checkForUpdate, installUpdate } from "./updater";
+import { applyOmarchyPalette, type OmarchyPalette } from "./theme";
 
 const els = {
-  title: document.getElementById("title")!,
   toggle: document.getElementById("btn-toggle") as HTMLButtonElement,
   open: document.getElementById("btn-open") as HTMLButtonElement,
   save: document.getElementById("btn-save") as HTMLButtonElement,
@@ -42,6 +42,7 @@ const els = {
 
 const editor = new Editor(els.editorPane);
 const preview = new Preview(els.previewPane);
+const appWindow = getCurrentWindow();
 
 let mode: Mode = "edit";
 let currentPath: string | null = null;
@@ -70,7 +71,7 @@ function fileLabel(): string {
 
 function refreshChrome() {
   const marker = dirty ? "• " : "";
-  els.title.textContent = `${marker}${fileLabel()} — RenderMD`;
+  void appWindow.setTitle(`${marker}${fileLabel()}`);
   els.statusPath.textContent = currentPath ?? "No file";
   els.statusMtime.textContent = currentMtime ?? "";
   els.statusMode.textContent = mode === "edit" ? "Edit" : "Preview";
@@ -455,8 +456,6 @@ void bridge.onDocReplaced((doc) => {
   refreshChrome();
 });
 
-// Dirty-guarded window close.
-const appWindow = getCurrentWindow();
 let closing = false;
 
 async function requestClose() {
@@ -489,14 +488,26 @@ import("@tauri-apps/api/webview").then(({ getCurrentWebview }) => {
   });
 });
 
-// Theme: keep Rust's renderer in sync with the OS scheme.
+// Theme: Omarchy colors.toml when present, otherwise OS color scheme.
 const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
-void bridge.setDark(darkQuery.matches);
-darkQuery.addEventListener("change", (e) => void bridge.setDark(e.matches));
+let omarchyActive = false;
+
+function onOmarchyPalette(p: OmarchyPalette) {
+  omarchyActive = true;
+  applyOmarchyPalette(p);
+}
+
+darkQuery.addEventListener("change", (e) => {
+  if (!omarchyActive) void bridge.setDark(e.matches);
+});
 
 // ---------------------------------------------------------------- boot
 
 async function boot() {
+  const palette = await bridge.getOmarchyTheme().catch(() => null);
+  if (palette) onOmarchyPalette(palette);
+  else void bridge.setDark(darkQuery.matches);
+  void bridge.onOmarchyTheme(onOmarchyPalette);
   const doc = await bridge.getDoc();
   applyDoc(doc);
 }
