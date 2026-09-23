@@ -10,6 +10,7 @@ mod watcher;
 use std::sync::Mutex;
 
 use tauri::Manager;
+use tauri_plugin_window_state::StateFlags;
 
 use state::AppState;
 
@@ -57,7 +58,19 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        // Size and place are remembered. Decorations and visibility are not:
+        // the window stays hidden until setup applies the Omarchy title-bar
+        // choice, then shows it. Restoring a saved title-bar would undo that.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    StateFlags::SIZE
+                        | StateFlags::POSITION
+                        | StateFlags::MAXIMIZED
+                        | StateFlags::FULLSCREEN,
+                )
+                .build(),
+        )
         .manage(Mutex::new(initial_state))
         .register_uri_scheme_protocol("preview", |ctx, request| {
             preview_protocol::handle(ctx, request)
@@ -91,6 +104,15 @@ pub fn run() {
                 s.render_preview();
             }
             omarchy::start_watching(app.handle());
+            // Native title bar everywhere. On Omarchy, drop it so the header
+            // matches the other editors. The window was created hidden.
+            if let Some(window) = app.get_webview_window("main") {
+                if omarchy::load_palette().is_some() {
+                    let _ = window.set_decorations(false);
+                }
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
