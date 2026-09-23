@@ -177,14 +177,15 @@ pub fn start_watching<R: Runtime>(app: &AppHandle<R>) {
     };
 
     let (tx, rx) = mpsc::channel::<()>();
-    let mut watcher = match notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
-        if res.is_ok() {
-            let _ = tx.send(());
-        }
-    }) {
-        Ok(w) => w,
-        Err(_) => return,
-    };
+    let mut watcher =
+        match notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+            if res.is_ok() {
+                let _ = tx.send(());
+            }
+        }) {
+            Ok(w) => w,
+            Err(_) => return,
+        };
 
     for dir in [&current_dir, &theme_dir] {
         let _ = watcher.watch(dir, notify::RecursiveMode::NonRecursive);
@@ -206,7 +207,9 @@ pub fn start_watching<R: Runtime>(app: &AppHandle<R>) {
                 }
                 while rx.try_recv().is_ok() {}
             }
-            let Some(palette) = load_palette() else { continue };
+            let Some(palette) = load_palette() else {
+                continue;
+            };
             {
                 let state = app.state::<Mutex<AppState>>();
                 let mut s = state.lock().unwrap();
