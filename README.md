@@ -41,18 +41,35 @@ builds possible.
 
 ## Arch / Omarchy
 
-The AUR package is `rendermd-bin` (`packaging/aur/`). New AUR accounts are
-closed as of August 2026, so it is not published yet. Until then, build from
-the PKGBUILD:
+The AUR package is `rendermd-bin` (`packaging/aur/`). New AUR registrations
+are closed as of August 2026, so it is not published yet. Until RenderMD can
+go up on the AUR, install it by hand from this repo.
+
+On Omarchy the app follows the current theme, shows up in the launcher, and
+stays off the bar. The recipe downloads the pinned GitHub release, checks its
+checksum, and installs the desktop file. `makepkg` asks for your password to
+install `webkit2gtk-4.1` and `gtk3` if they are missing.
 
 ```bash
-git clone https://github.com/imcmurray/RenderMD-Tauri.git
+git clone --depth 1 https://github.com/imcmurray/RenderMD-Tauri.git
 cd RenderMD-Tauri/packaging/aur
 makepkg -si
+```
+
+Markdown stays with whatever app already opens it. To open `.md` files in
+RenderMD:
+
+```bash
 xdg-mime default RenderMD.desktop text/markdown
 ```
 
-Once the AUR package is up, Omarchy users can install it with
+Remove it with:
+
+```bash
+sudo pacman -Rns rendermd-bin
+```
+
+Once the AUR package is published, Omarchy users can install it with
 `omarchy pkg aur add rendermd-bin`.
 
 ## Build
