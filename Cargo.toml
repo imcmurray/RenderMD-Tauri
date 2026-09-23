@@ -9,7 +9,7 @@ license = "MIT"
 
 [workspace.dependencies]
 comrak = { version = "0.29", features = ["syntect"] }
-pulldown-cmark = { version = "0.11", default-features = false }
+pulldown-cmark = { version = "0.13", default-features = false }
 csv = "1"
 percent-encoding = "2"
 chrono = "0.4"
