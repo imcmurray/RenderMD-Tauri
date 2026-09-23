@@ -3,8 +3,8 @@
 # Upstream: https://github.com/imcmurray/RenderMD-Tauri
 
 pkgname=rendermd-bin
-_appver=2.0.0-beta.4
-pkgver=2.0.0beta4 # pacman forbids hyphens in pkgver
+_appver=2.0.0-beta.6
+pkgver=2.0.0beta6 # pacman forbids hyphens in pkgver
 pkgrel=1
 pkgdesc="Cross-platform Markdown viewer/editor — rendered preview by default, one-key editor toggle, editable tables, mermaid, git history rail"
 arch=('x86_64')
@@ -18,7 +18,7 @@ options=('!strip' '!emptydirs')
 source=("${url}/releases/download/v${_appver}/RenderMD_${_appver}_amd64.deb"
         "LICENSE-${_appver}::https://raw.githubusercontent.com/imcmurray/RenderMD-Tauri/v${_appver}/LICENSE"
         "RenderMD.desktop")
-sha256sums=('bfd328b55a8a03c2f673456f41bfbd41be24001d62a5317219dba8249e2bb16a'
+sha256sums=('c28df6d0a953eae49dc43f2da0da1604a21feb8b3c7ac067366407c127360a65'
             '42ff7afeb6ecfd4fd04b079c039fa3f8450decc9f91797be9c26e2c36b5cb000'
             '232e1f4a2ff30382e59576158072a6e45c8dfd6c7797164991612282592fc8c3')
 
